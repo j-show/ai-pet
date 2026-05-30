@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Pet</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <main id="app">
+      <div id="pet-stage">
+        <canvas id="pet-canvas" aria-label="desktop pet"></canvas>
+        <div id="text-bubble" class="text-bubble" hidden>
+          <button
+            id="text-bubble-close"
+            type="button"
+            class="text-bubble__close"
+            aria-label="关闭"
+            hidden
+          >
+            ×
+          </button>
+          <div id="text-bubble-header" class="text-bubble__header" hidden>
+            <p id="text-bubble-title" class="text-bubble__title" hidden></p>
+            <span
+              id="text-bubble-icon"
+              class="text-bubble__icon"
+              hidden
+              aria-hidden="true"
+            ></span>
+          </div>
+          <p id="text-bubble-content" class="text-bubble__content" hidden></p>
+        </div>
+      </div>
+      <p id="pet-title" class="sr-only"></p>
+      <p id="error" hidden></p>
+      <menu id="context-menu" hidden>
+        <button type="button" data-action="quit">退出</button>
+      </menu>
+    </main>
+  </body>
+</html>
