@@ -3,7 +3,7 @@
  * Sync the default pet package from packages/pet-skins/<defaultPetId> into public/default/.
  * Skips when the source is missing but public/default already contains a pet package.
  */
-import { access, cp, mkdir, rm } from 'node:fs/promises';
+import { access, cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,6 +22,10 @@ const DEFAULT_PET_SOURCE = path.join(
   DEFAULT_PET_ID
 );
 
+/**
+ * @param {string} dirPath
+ * @returns {Promise<boolean>} True when `pet.json` exists in the directory.
+ */
 async function hasPetPackage(dirPath) {
   try {
     await access(path.join(dirPath, 'pet.json'));
@@ -48,9 +52,10 @@ async function main() {
     );
   }
 
-  await rm(PUBLIC, { recursive: true, force: true });
   await mkdir(PUBLIC, { recursive: true });
-  await cp(DEFAULT_PET_SOURCE, PUBLIC, { recursive: true });
+  // Merge copy so bundled assets (e.g. spritesheet.webp) survive when the source
+  // package only ships pet.json in git.
+  await cp(DEFAULT_PET_SOURCE, PUBLIC, { recursive: true, force: true });
   console.log(`synced default pet from ${DEFAULT_PET_PATH} -> public/default`);
 }
 

@@ -55,12 +55,26 @@ pub fn resolve_user_pet(home: &Path, pet_id: &str) -> Result<Option<ResolvedUser
         .and_then(Value::as_str)
         .ok_or_else(|| format!("Missing spritesheetPath in {}", manifest_path.display()))?;
 
+    if spritesheet_rel.contains("..") {
+        return Err(format!("Invalid spritesheetPath for pet \"{pet_id}\""));
+    }
+
     let spritesheet_path = pet_dir.join(spritesheet_rel);
     if !spritesheet_path.is_file() {
         return Err(format!(
             "Spritesheet not found for pet \"{pet_id}\": {}",
             spritesheet_path.display()
         ));
+    }
+
+    let pet_dir_canonical = pet_dir
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+    let spritesheet_canonical = spritesheet_path
+        .canonicalize()
+        .map_err(|error| error.to_string())?;
+    if !spritesheet_canonical.starts_with(&pet_dir_canonical) {
+        return Err(format!("Invalid spritesheetPath for pet \"{pet_id}\""));
     }
 
     Ok(Some(ResolvedUserPet {

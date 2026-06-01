@@ -13,13 +13,17 @@
   },
   "license": "MIT",
   "scripts": {
-    "sync-pets": "node scripts/sync-pets.mjs",
     "clean": "node scripts/clean.mjs",
     "icon": "node scripts/prepare-icon-source.mjs && tauri icon src-tauri/icons/icon-source.png -o src-tauri/icons",
-    "dev": "tauri dev",
-    "build": "tauri build",
+    "export": "node scripts/export-dist.mjs",
     "open": "node scripts/aipet-open.mjs",
-    "preview": "vite preview"
+    "sync-pets": "node scripts/sync-pets.mjs",
+    "sync-version": "node scripts/sync-version.mjs",
+    "preview": "vite preview",
+    "dev": "tauri dev",
+    "build": "pnpm build:msi && pnpm build:portable:win && pnpm export",
+    "build:msi": "tauri build",
+    "build:portable:win": "tauri build --no-bundle --config src-tauri/tauri.portable.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

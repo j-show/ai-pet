@@ -13,7 +13,7 @@ pnpm deploy
 pnpm test
 ```
 
-`deploy` copies selected packages into `~/.codex/pets/<petId>/` (interactive TTY required).
+`deploy` copies selected packages into `~/.ai-pet/pets/<petId>/` (interactive TTY required).
 
 ## Layout
 

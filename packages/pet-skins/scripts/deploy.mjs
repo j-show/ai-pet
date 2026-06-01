@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Interactive deploy: pick a pet-skins package, toggle install in ~/.codex/pets.
- * Installs by copying packages/pet-skins/<petId>/ into ~/.codex/pets/<petId>/.
+ * Interactive deploy: pick a pet-skins package, toggle install in ~/.ai-pet/pets.
+ * Installs by copying packages/pet-skins/<petId>/ into ~/.ai-pet/pets/<petId>/.
  */
 import { access, cp, lstat, mkdir, rm, unlink } from 'node:fs/promises';
 import os from 'node:os';
@@ -14,15 +14,15 @@ import { listDeployablePets } from '../lib/list-pets.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** pet-skins package root (parent of scripts/). */
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
-/** Codex user pets directory; deploy copies packages here. */
-const PETS_DIR = path.join(os.homedir(), '.codex', 'pets');
+/** AI Pet user pets directory; deploy copies packages here. */
+const PETS_DIR = path.join(os.homedir(), '.ai-pet', 'pets');
 
 /**
  * One deployable pet under pet-skins/.
  * @typedef {object} PetEntry
  * @property {string} name Directory name (pet id).
  * @property {string} sourceAbs Absolute path to the package directory.
- * @property {boolean} installed Whether ~/.codex/pets/<name> already exists.
+ * @property {boolean} installed Whether ~/.ai-pet/pets/<name> already exists.
  */
 
 /**

@@ -67,7 +67,7 @@ pnpm open aipet://waving
 pnpm sync-pets        # 可选：从 ../pet-skins/sugarwing 同步到 public/default
 ```
 
-`tauri dev` / `tauri build` 前会尝试运行 `sync-pets.mjs`：若 `packages/pet-skins/sugarwing` 存在则更新 `public/default/`；否则使用已有的 `public/default/`。
+`tauri dev` / `tauri build` 前会尝试运行 `sync-pets.mjs`：若 `packages/pet-skins/sugarwing` 存在则**合并**更新 `public/default/`（保留目标目录中源未提供的文件，例如已提交的雪碧图）；否则使用已有的 `public/default/`。
 
 指定宠物启动（开发模式）：
 
@@ -141,8 +141,14 @@ pnpm pet:open 'aipet://text?icon=warn&txt=多行%0A文字'
 ## 构建
 
 ```bash
-pnpm tauri build
+pnpm tauri build                    # 安装包（Windows: msi 等）
+pnpm build:portable:win             # 仅 release exe，不打包安装器
+pnpm sync-version                   # 将 package.json 版本同步到 Cargo / tauri conf
+pnpm export                         # 复制 exe 与 bundle 到仓库根 dist/
+pnpm build                          # msi + portable exe + export（Windows）
 ```
+
+Windows 便携版产物：`src-tauri/target/release/ai-pet.exe`（需系统已安装 WebView2 Runtime）。
 
 若项目目录迁移后 Rust 构建报找不到旧路径下的文件，先清理再构建：
 
@@ -164,7 +170,9 @@ pnpm icon   # 在 packages/ai-pet 目录，或 pnpm -F ai-pet icon
 ai-pet/
 ├── public/default/       # 内置默认宠物（提交进仓库）
 ├── scripts/
-│   ├── sync-pets.mjs     # skins → public/default
+│   ├── sync-pets.mjs     # skins → public/default（合并复制）
+│   ├── sync-version.mjs  # package.json → Cargo / tauri conf
+│   ├── export-dist.mjs   # 构建产物 → 仓库根 dist/
 │   └── aipet-open.mjs    # 协议调试
 ├── src/
 │   ├── config/user-env.ts

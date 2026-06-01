@@ -1,6 +1,6 @@
 [package]
 name = "ai-pet"
-version = "0.1.0"
+version = "1.0.0"
 description = "Codex-style desktop pet powered by Tauri"
 authors = ["jshow"]
 edition = "2021"

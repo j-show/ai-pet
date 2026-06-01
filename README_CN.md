@@ -17,16 +17,17 @@ pnpm install
 
 | 命令 | 说明 |
 | --- | --- |
-| `pnpm deploy` | 交互式将 `packages/pet-skins/` 复制到 `~/.codex/pets` |
+| `pnpm deploy` | 交互式将 `packages/pet-skins/` 复制到 `~/.ai-pet/pets` |
 | `pnpm pet:dev` | 启动 AI Pet 桌面应用（开发） |
 | `pnpm pet:build` | 构建 AI Pet（Tauri） |
 | `pnpm pet:open` | 通过开发桥或系统处理打开 `aipet://` |
 | `pnpm lint` / `pnpm fix:eslint` | ESLint（含自动修复） |
+| `pnpm typecheck` | TypeScript 类型检查（`packages/ai-pet`） |
 | `pnpm test` | `pet-skins` 单元测试 |
 
 `deploy`：`↑`/`↓` 切换、`Enter` 安装/卸载（`*` 已安装）、`Ctrl+C` 退出。
 
-安装方式：将 `packages/pet-skins/<petId>/` **复制**到 `~/.codex/pets/<petId>/`。
+安装方式：将 `packages/pet-skins/<petId>/` **复制**到 `~/.ai-pet/pets/<petId>/`。
 
 ## 目录结构
 

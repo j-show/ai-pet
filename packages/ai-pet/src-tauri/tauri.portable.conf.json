@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AI Pet",
+  "version": "1.0.0",
+  "identifier": "com.jshow.ai-pet",
+  "bundle": {
+    "active": false
+  }
+}

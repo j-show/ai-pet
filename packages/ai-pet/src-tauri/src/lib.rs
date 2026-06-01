@@ -41,12 +41,12 @@ pub fn run() {
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
 
-            if let Some(window) = app.get_webview_window("main") {
+            if let Some(_window) = app.get_webview_window("main") {
                 #[cfg(target_os = "macos")]
                 {
                     use tauri::window::Color;
-                    let _ = window.set_background_color(Some(Color(0, 0, 0, 0)));
-                    let _ = window.set_shadow(false);
+                    let _ = _window.set_background_color(Some(Color(0, 0, 0, 0)));
+                    let _ = _window.set_shadow(false);
                 }
             }
 

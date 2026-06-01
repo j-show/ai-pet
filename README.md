@@ -17,11 +17,12 @@ pnpm install
 
 | Script | Description |
 | --- | --- |
-| `pnpm deploy` | Interactive copy from `packages/pet-skins/` to `~/.codex/pets` |
+| `pnpm deploy` | Interactive copy from `packages/pet-skins/` to `~/.ai-pet/pets` |
 | `pnpm pet:dev` | Run AI Pet (Tauri dev) |
 | `pnpm pet:build` | Build AI Pet |
 | `pnpm pet:open` | Open `aipet://` URL via dev bridge or OS handler |
 | `pnpm lint` / `pnpm fix:eslint` | ESLint (with fix) |
+| `pnpm typecheck` | TypeScript check for `packages/ai-pet` |
 | `pnpm test` | `pet-skins` unit tests |
 
 ## Layout
