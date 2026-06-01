@@ -1,13 +1,21 @@
+import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-import { DEFAULT_ANIMATION_TICK_MS } from '../config/user-env';
+import { loadTextPayload } from '../config/text-payload';
+import { type UserEnv, DEFAULT_ANIMATION_TICK_MS } from '../config/user-env';
+import {
+  applyWindowTopRightAnchor,
+  parseWindowAnchor,
+  readWindowTopRightAnchor,
+  saveWindowTopRightAnchor
+} from '../config/window-position';
 
 import { DEFAULT_PET_ID } from './codex-defaults';
 import { loadPet } from './loader';
 import { SpritePlayer } from './sprite-player';
 import {
-  TextBubble,
+  TextBubbleStack,
   bubbleAnchorForPet,
   type AipetTextMessage
 } from './text-bubble';
@@ -53,10 +61,12 @@ export class DesktopPet {
   private readonly stageEl: HTMLElement;
   private readonly contextMenu: HTMLElement;
   private readonly titleEl: HTMLElement;
-  private readonly textBubble: TextBubble;
+  private readonly textBubbles: TextBubbleStack;
 
   private pointerDown: { x: number; y: number; time: number } | null = null;
+  private activePointerId: number | null = null;
   private dragSession: DragSession | null = null;
+  private dragReleasePollRaf = 0;
   private idleTimer = 0;
   /** Temporary base replacement set by `?default=true`; cleared by `aipet://base`. */
   private protocolDefault: PetState | null = null;
@@ -66,28 +76,15 @@ export class DesktopPet {
     stageEl: HTMLElement,
     contextMenu: HTMLElement,
     titleEl: HTMLElement,
-    textBubbleRoot: HTMLElement,
-    textBubbleClose: HTMLButtonElement,
-    textBubbleHeader: HTMLElement,
-    textBubbleTitle: HTMLElement,
-    textBubbleIcon: HTMLElement,
-    textBubbleContent: HTMLElement
+    textBubblesRoot: HTMLElement
   ) {
     this.canvas = canvas;
     this.stageEl = stageEl;
     this.contextMenu = contextMenu;
     this.titleEl = titleEl;
-    this.textBubble = new TextBubble(
-      textBubbleRoot,
-      textBubbleClose,
-      textBubbleHeader,
-      textBubbleTitle,
-      textBubbleIcon,
-      textBubbleContent,
-      () => {
-        void this.resizeWindow();
-      }
-    );
+    this.textBubbles = new TextBubbleStack(textBubblesRoot, () => {
+      void this.resizeWindow();
+    });
   }
 
   private async resizeWindow() {
@@ -105,8 +102,8 @@ export class DesktopPet {
         requestAnimationFrame(() => resolve());
       });
 
-      if (this.textBubble.isVisible()) {
-        this.textBubble.layoutAtAnchor(anchor);
+      if (this.textBubbles.isVisible()) {
+        this.textBubbles.layoutAtAnchor(anchor);
       }
 
       await new Promise<void>(resolve => {
@@ -118,7 +115,7 @@ export class DesktopPet {
       let maxX = petWidth;
       let maxY = petHeight;
 
-      const bubbleBox = this.textBubble.measureBox(anchor);
+      const bubbleBox = this.textBubbles.measureBox(anchor);
       if (bubbleBox) {
         minX = Math.min(minX, bubbleBox.left);
         minY = Math.min(minY, bubbleBox.top);
@@ -209,7 +206,12 @@ export class DesktopPet {
   }
 
   private onWindowMoved(windowX: number) {
-    if (!this.pointerDown || !this.dragSession || !this.player || !this.pet) {
+    if (!this.dragSession || !this.player || !this.pet) {
+      return;
+    }
+
+    // Native window drag on Windows/Linux may clear pointer tracking early.
+    if (this.dragSession.phase === 'none' && !this.pointerDown) {
       return;
     }
 
@@ -256,13 +258,14 @@ export class DesktopPet {
     this.dragSession.phase = 'start';
     this.dragSession.direction = direction;
     this.currentState = direction;
+    this.startDragReleasePoll();
 
     this.player.playRange(animation, {
       fromFrame: DRAG_START_FROM,
       toFrame: DRAG_START_TO,
       loop: false,
       onComplete: () => {
-        if (this.pointerDown && this.dragSession?.phase === 'start') {
+        if (this.dragSession?.phase === 'start') {
           this.beginDragLoop(
             this.currentLoopDirection() ?? this.dragSession.direction ?? void 0
           );
@@ -272,7 +275,14 @@ export class DesktopPet {
   }
 
   private beginDragLoop(direction?: PetState) {
-    if (!this.pointerDown || !this.dragSession || !this.player || !this.pet) {
+    if (!this.dragSession || !this.player || !this.pet) {
+      return;
+    }
+
+    if (
+      this.dragSession.phase !== 'start' &&
+      this.dragSession.phase !== 'loop'
+    ) {
       return;
     }
 
@@ -349,11 +359,155 @@ export class DesktopPet {
       fromFrame: DRAG_END_FROM,
       toFrame: DRAG_END_TO,
       loop: false,
+      hardSwitch: true,
       onComplete: () => {
         this.restoreBase();
       }
     });
   }
+
+  private shouldUseDragReleasePoll() {
+    return (
+      typeof navigator !== 'undefined' && /Windows/i.test(navigator.userAgent)
+    );
+  }
+
+  private stopDragReleasePoll() {
+    if (this.dragReleasePollRaf) {
+      cancelAnimationFrame(this.dragReleasePollRaf);
+      this.dragReleasePollRaf = 0;
+    }
+  }
+
+  /** Windows: `startDragging()` blocks pointerup; poll GetAsyncKeyState instead. */
+  private startDragReleasePoll() {
+    if (!this.shouldUseDragReleasePoll() || this.dragReleasePollRaf) {
+      return;
+    }
+
+    const tick = () => {
+      const session = this.dragSession;
+      if (!session || (session.phase !== 'start' && session.phase !== 'loop')) {
+        this.stopDragReleasePoll();
+        return;
+      }
+
+      void invoke<boolean>('is_primary_mouse_button_down')
+        .then(down => {
+          if (
+            !down &&
+            this.dragSession &&
+            (this.dragSession.phase === 'start' ||
+              this.dragSession.phase === 'loop')
+          ) {
+            this.endActiveDrag();
+          }
+        })
+        .catch(error => {
+          console.warn('drag release poll failed:', error);
+        });
+
+      this.dragReleasePollRaf = requestAnimationFrame(tick);
+    };
+
+    this.dragReleasePollRaf = requestAnimationFrame(tick);
+  }
+
+  private cancelDragTracking() {
+    this.stopDragReleasePoll();
+    this.dragSession = null;
+    this.pointerDown = null;
+    this.activePointerId = null;
+  }
+
+  private endActiveDrag(): boolean {
+    const session = this.dragSession;
+    if (!session) {
+      return false;
+    }
+
+    const direction = session.direction;
+    const wasDrag =
+      session.moved || session.phase === 'start' || session.phase === 'loop';
+
+    this.cancelDragTracking();
+
+    if (direction && wasDrag) {
+      void this.persistWindowAnchorAfterDrag();
+      this.beginDragEnd(direction);
+      return true;
+    }
+
+    return false;
+  }
+
+  private async persistWindowAnchorAfterDrag() {
+    try {
+      const anchor = await readWindowTopRightAnchor();
+      await saveWindowTopRightAnchor(anchor);
+    } catch (error) {
+      console.warn('Failed to save window position:', error);
+    }
+  }
+
+  private async restoreWindowFromEnv(env: UserEnv) {
+    const anchor = parseWindowAnchor(env);
+    if (!anchor) {
+      return;
+    }
+
+    try {
+      await applyWindowTopRightAnchor(anchor);
+    } catch (error) {
+      console.warn('Failed to restore window position:', error);
+    }
+  }
+
+  private finishPointerInteraction(event: PointerEvent | MouseEvent) {
+    if (event.button !== 0 || !this.pointerDown) {
+      return;
+    }
+
+    const pointerDown = this.pointerDown;
+    const dx = event.screenX - pointerDown.x;
+    const dy = event.screenY - pointerDown.y;
+    const distance = Math.hypot(dx, dy);
+    const elapsed = Date.now() - pointerDown.time;
+
+    if (this.endActiveDrag()) {
+      return;
+    }
+
+    this.cancelDragTracking();
+
+    if (
+      distance < DRAG_THRESHOLD_PX &&
+      elapsed < TAP_MAX_MS &&
+      'detail' in event &&
+      event.detail === 1
+    ) {
+      this.onTap();
+    }
+  }
+
+  private onPointerUp = (event: PointerEvent) => {
+    if (
+      this.activePointerId !== null &&
+      event.pointerId !== this.activePointerId
+    ) {
+      return;
+    }
+
+    if (this.canvas.hasPointerCapture(event.pointerId)) {
+      this.canvas.releasePointerCapture(event.pointerId);
+    }
+
+    this.finishPointerInteraction(event);
+  };
+
+  private onWindowMouseUp = (event: MouseEvent) => {
+    this.finishPointerInteraction(event);
+  };
 
   private bindEvents() {
     this.canvas.addEventListener('contextmenu', event => {
@@ -361,7 +515,7 @@ export class DesktopPet {
       this.showContextMenu(event.clientX, event.clientY);
     });
 
-    this.canvas.addEventListener('mousedown', event => {
+    this.canvas.addEventListener('pointerdown', event => {
       if (event.button !== 0) {
         return;
       }
@@ -371,6 +525,13 @@ export class DesktopPet {
       }
 
       this.hideContextMenu();
+      this.activePointerId = event.pointerId;
+      try {
+        this.canvas.setPointerCapture(event.pointerId);
+      } catch {
+        // Capture may fail on unsupported platforms; window mouseup is fallback.
+      }
+
       this.pointerDown = {
         x: event.screenX,
         y: event.screenY,
@@ -385,37 +546,22 @@ export class DesktopPet {
         oppositeDragPx: 0
       };
 
+      void getCurrentWindow()
+        .outerPosition()
+        .then(({ x }) => {
+          if (!this.dragSession) {
+            return;
+          }
+
+          this.dragSession.startWindowX = x;
+          this.dragSession.lastWindowX = x;
+        });
+
       void getCurrentWindow().startDragging();
     });
 
-    this.canvas.addEventListener('mouseup', event => {
-      if (event.button !== 0 || !this.pointerDown) {
-        return;
-      }
-
-      const dragDirection = this.dragSession?.direction ?? null;
-      const wasDrag = this.dragSession?.moved ?? false;
-      const dx = event.screenX - this.pointerDown.x;
-      const dy = event.screenY - this.pointerDown.y;
-      const distance = Math.hypot(dx, dy);
-      const elapsed = Date.now() - this.pointerDown.time;
-
-      this.dragSession = null;
-      this.pointerDown = null;
-
-      if (wasDrag && dragDirection) {
-        this.beginDragEnd(dragDirection);
-        return;
-      }
-
-      if (
-        distance < DRAG_THRESHOLD_PX &&
-        elapsed < TAP_MAX_MS &&
-        event.detail === 1
-      ) {
-        this.onTap();
-      }
-    });
+    this.canvas.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('mouseup', this.onWindowMouseUp, true);
 
     document.addEventListener('click', event => {
       if (
@@ -606,20 +752,28 @@ export class DesktopPet {
     this.scheduleIdleBehavior();
   }
 
-  /** Handle `aipet://text?icon=&txt=` protocol requests. */
-  public showProtocolText(message: AipetTextMessage) {
-    this.textBubble.show(message);
+  /** Handle `aipet://text?sid=&icon=&txt=` protocol requests. */
+  public async showProtocolText(message: AipetTextMessage) {
+    const fromFile = await loadTextPayload(message.sid);
+    const enriched: AipetTextMessage = {
+      sid: message.sid,
+      title: message.title || fromFile?.title || void 0,
+      text: fromFile?.text || message.text || '',
+      icon: message.icon ?? null
+    };
+    this.textBubbles.show(enriched);
     void this.resizeWindow();
   }
 
-  /** Handle bare `aipet://text` to dismiss the text bubble. */
-  public dismissProtocolText() {
-    this.textBubble.dismiss();
+  /** Handle `aipet://text` or `aipet://text?sid=` to dismiss bubble(s). */
+  public dismissProtocolText(sid?: string) {
+    this.textBubbles.dismiss(sid);
   }
 
   public async init(
     petId = DEFAULT_PET_ID,
-    animationTickMs = DEFAULT_ANIMATION_TICK_MS
+    animationTickMs = DEFAULT_ANIMATION_TICK_MS,
+    userEnv: UserEnv = {}
   ) {
     const { pet, spritesheet } = await loadPet(petId);
     this.pet = pet;
@@ -640,6 +794,7 @@ export class DesktopPet {
     await this.bindMoveListener();
     this.enterAutoPlay();
     await this.resizeWindow();
+    await this.restoreWindowFromEnv(userEnv);
   }
 
   public refreshDisplay() {
@@ -649,10 +804,12 @@ export class DesktopPet {
   /** Release animation loop and idle timers (HMR / re-init). */
   public destroy() {
     this.clearIdleTimer();
+    this.stopDragReleasePoll();
     this.protocolDefault = null;
     this.player?.dispose();
     this.player = null;
     this.dragSession = null;
     this.pointerDown = null;
+    this.activePointerId = null;
   }
 }

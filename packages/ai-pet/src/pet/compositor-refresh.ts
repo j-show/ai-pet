@@ -9,12 +9,12 @@ let lastRefreshAt = 0;
 let onFocusRepaint: (() => void) | null = null;
 
 /** Register a callback to repaint the current animation when the window becomes key again. */
-export function setFocusRepaintHandler(handler: (() => void) | null) {
+export const setFocusRepaintHandler = (handler: (() => void) | null) => {
   onFocusRepaint = handler;
-}
+};
 
 /** Track window focus and request native compositor refresh while unfocused. */
-export async function initCompositorRefresh() {
+export const initCompositorRefresh = async () => {
   const appWindow = getCurrentWindow();
 
   await appWindow.listen('tauri://blur', () => {
@@ -34,22 +34,16 @@ export async function initCompositorRefresh() {
   window.addEventListener('blur', () => {
     windowFocused = false;
   });
-}
+};
 
-export function isWindowFocused() {
-  return windowFocused;
-}
+export const isWindowFocused = () => windowFocused;
 
 /** Ask macOS to flush stale transparent-window layers after canvas updates. */
-export function requestTransparentRepaint() {
-  if (windowFocused) {
-    return;
-  }
+export const requestTransparentRepaint = () => {
+  if (windowFocused) return;
 
   const now = performance.now();
-  if (refreshPending || now - lastRefreshAt < REFRESH_MIN_INTERVAL_MS) {
-    return;
-  }
+  if (refreshPending || now - lastRefreshAt < REFRESH_MIN_INTERVAL_MS) return;
 
   refreshPending = true;
   queueMicrotask(() => {
@@ -59,4 +53,4 @@ export function requestTransparentRepaint() {
       console.warn('invalidate_transparent_window failed:', error);
     });
   });
-}
+};

@@ -100,6 +100,17 @@ body {
   cursor: grabbing;
 }
 
+.text-bubbles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.text-bubbles .text-bubble {
+  pointer-events: auto;
+}
+
 .text-bubble {
   position: absolute;
   z-index: 2;
@@ -232,6 +243,10 @@ body {
 .text-bubble__icon--info {
   color: #ffffff;
   background: #2563eb;
+}
+
+.text-bubble__icon--none {
+  display: none;
 }
 
 .text-bubble__content {

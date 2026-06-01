@@ -13,13 +13,11 @@ const CHROMA_TOLERANCE = 14;
 /** One active player per canvas — stops orphaned rAF loops after HMR reload. */
 const canvasOwner = new WeakMap<HTMLCanvasElement, SpritePlayer>();
 
-function parseHexColor(
+const parseHexColor = (
   hex: string
-): { r: number; g: number; b: number } | null {
+): { r: number; g: number; b: number } | null => {
   const normalized = hex.trim().replace(/^#/, '');
-  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
-    return null;
-  }
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return null;
 
   const value = Number.parseInt(normalized, 16);
   return {
@@ -27,12 +25,12 @@ function parseHexColor(
     g: (value >> 8) & 0xff,
     b: value & 0xff
   };
-}
+};
 
-function applyChromaKey(
+const applyChromaKey = (
   imageData: ImageData,
   chromaRgb: { r: number; g: number; b: number }
-) {
+) => {
   const { r: kr, g: kg, b: kb } = chromaRgb;
   const { data } = imageData;
   for (let i = 0; i < data.length; i += 4) {
@@ -44,16 +42,14 @@ function applyChromaKey(
       data[i + 3] = 0;
     }
   }
-}
+};
 
 /** Bake chroma key once so runtime frames never need getImageData/putImageData. */
-function prepareSpritesheet(
+const prepareSpritesheet = (
   image: HTMLImageElement,
   chromaRgb: { r: number; g: number; b: number } | null
-): CanvasImageSource {
-  if (!chromaRgb) {
-    return image;
-  }
+): CanvasImageSource => {
+  if (!chromaRgb) return image;
 
   const width = image.naturalWidth;
   const height = image.naturalHeight;
@@ -62,25 +58,23 @@ function prepareSpritesheet(
   canvas.height = height;
 
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) {
-    return image;
-  }
+  if (!ctx) return image;
 
   ctx.drawImage(image, 0, 0);
   const imageData = ctx.getImageData(0, 0, width, height);
   applyChromaKey(imageData, chromaRgb);
   ctx.putImageData(imageData, 0, 0);
   return canvas;
-}
+};
 
 /**
  * canvas.width = canvas.width 的目的不是改尺寸，
  * 而是故意触发一次「重置画布」，相当于不换大小地换一块新 bitmap。
  */
-function resetBitmap(canvas: HTMLCanvasElement) {
+const resetBitmap = (canvas: HTMLCanvasElement) => {
   // eslint-disable-next-line no-self-assign
   canvas.width = canvas.width;
-}
+};
 
 export class SpritePlayer {
   private readonly canvas: HTMLCanvasElement;
@@ -160,23 +154,23 @@ export class SpritePlayer {
     },
     hardSwitch = false
   ) {
-    if (this.disposed) {
-      return;
-    }
+    if (this.disposed) return;
 
     this.interruptPlayback();
-    const token = this.playbackToken;
+
     this.animation = animation;
     this.frameIndex = options.startFrame;
     this.rangeFrom = options.rangeFrom ?? null;
     this.rangeTo = options.rangeTo ?? null;
     this.loop = options.loop;
     this.onComplete = options.onComplete;
+
     this.playing = true;
     this.lastTimestamp = 0;
     this.elapsedMs = 0;
+
     this.paintFrame(hardSwitch);
-    this.scheduleTick(token);
+    this.scheduleTick(this.playbackToken);
   }
 
   private scheduleTick(token: number) {
@@ -190,7 +184,7 @@ export class SpritePlayer {
       !this.disposed &&
       token === this.playbackToken &&
       this.playing &&
-      this.animation !== null
+      this.animation != null
     );
   }
 
@@ -202,9 +196,7 @@ export class SpritePlayer {
   }
 
   private tick = (timestamp: number, token: number) => {
-    if (!this.isActivePlayback(token)) {
-      return;
-    }
+    if (!this.isActivePlayback(token)) return;
 
     if (!this.lastTimestamp) {
       this.lastTimestamp = timestamp;
@@ -217,36 +209,28 @@ export class SpritePlayer {
     let frameAdvanced = false;
     const frameDuration = this.frameIntervalMs;
     while (this.elapsedMs >= frameDuration) {
-      if (!this.isActivePlayback(token)) {
-        return;
-      }
+      if (!this.isActivePlayback(token)) return;
 
       this.elapsedMs -= frameDuration;
       this.advanceFrame();
       frameAdvanced = true;
 
-      if (!this.isActivePlayback(token)) {
-        return;
-      }
+      if (!this.isActivePlayback(token)) return;
     }
 
     if (frameAdvanced) {
       this.renderFrame(token);
     }
 
-    if (!this.isActivePlayback(token)) {
-      return;
-    }
+    if (!this.isActivePlayback(token)) return;
 
     this.scheduleTick(token);
   };
 
   private advanceFrame() {
-    if (!this.animation) {
-      return;
-    }
+    if (!this.animation) return;
 
-    if (this.rangeFrom !== null && this.rangeTo !== null) {
+    if (this.rangeFrom != null && this.rangeTo != null) {
       const next = this.frameIndex + 1;
       if (next > this.rangeTo) {
         if (this.loop) {
@@ -276,12 +260,15 @@ export class SpritePlayer {
 
   private finish() {
     this.stopLoop();
+
     const done = this.onComplete;
+
     this.onComplete = null;
     this.playbackToken += 1;
     this.playing = false;
     this.rangeFrom = null;
     this.rangeTo = null;
+
     done?.();
   }
 
@@ -293,9 +280,7 @@ export class SpritePlayer {
   }
 
   private renderFrame(token: number) {
-    if (!this.isActivePlayback(token) || !this.animation) {
-      return;
-    }
+    if (!this.isActivePlayback(token) || !this.animation) return;
 
     this.paintFrame(false);
   }
@@ -307,9 +292,7 @@ export class SpritePlayer {
    * is not enough after switching from a larger pose such as idle → failed).
    */
   private paintFrame(hardSwitch: boolean) {
-    if (!this.animation) {
-      return;
-    }
+    if (!this.animation) return;
 
     const { width, height } = this.canvas;
     if (hardSwitch) {
@@ -349,9 +332,7 @@ export class SpritePlayer {
 
   /** Tear down rAF loop; safe to call multiple times. */
   public dispose() {
-    if (this.disposed) {
-      return;
-    }
+    if (this.disposed) return;
 
     this.disposed = true;
     this.interruptPlayback();
@@ -382,13 +363,17 @@ export class SpritePlayer {
       throw new Error(`Invalid frame range: ${fromFrame}..${toFrame}`);
     }
 
-    this.beginPlayback(animation, {
-      startFrame: fromFrame,
-      rangeFrom: fromFrame,
-      rangeTo: toFrame,
-      loop: options.loop ?? false,
-      onComplete: options.onComplete ?? null
-    });
+    this.beginPlayback(
+      animation,
+      {
+        startFrame: fromFrame,
+        rangeFrom: fromFrame,
+        rangeTo: toFrame,
+        loop: options.loop ?? false,
+        onComplete: options.onComplete ?? null
+      },
+      options.hardSwitch ?? false
+    );
   }
 
   /** Draw a single frame without advancing the timeline. */
@@ -404,9 +389,7 @@ export class SpritePlayer {
 
   /** Redraw the current frame (e.g. after the window regains focus). */
   public refreshDisplay(hardSwitch = true) {
-    if (!this.animation) {
-      return;
-    }
+    if (!this.animation) return;
 
     this.paintFrame(hardSwitch);
   }

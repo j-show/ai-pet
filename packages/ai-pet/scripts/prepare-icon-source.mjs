@@ -22,14 +22,12 @@ const BLACK_SOFT = 56;
  * @param {number} g
  * @param {number} b
  */
-function isBackgroundRgb(r, g, b) {
-  return Math.max(r, g, b) <= BLACK_CUTOFF;
-}
+const isBackgroundRgb = (r, g, b) => Math.max(r, g, b) <= BLACK_CUTOFF;
 
 /**
  * @param {PNG} png
  */
-function applyOuterTransparentBackground(png) {
+const applyOuterTransparentBackground = png => {
   const { width, height, data } = png;
   const size = width * height;
   const outer = new Uint8Array(size);
@@ -38,13 +36,12 @@ function applyOuterTransparentBackground(png) {
 
   const tryEnqueue = (x, y) => {
     const i = y * width + x;
-    if (outer[i]) {
-      return;
-    }
+    if (outer[i]) return;
+
     const idx = i << 2;
-    if (!isBackgroundRgb(data[idx], data[idx + 1], data[idx + 2])) {
-      return;
-    }
+    const status = isBackgroundRgb(data[idx], data[idx + 1], data[idx + 2]);
+    if (!status) return;
+
     outer[i] = 1;
     queue.push(i);
   };
@@ -53,6 +50,7 @@ function applyOuterTransparentBackground(png) {
     tryEnqueue(x, 0);
     tryEnqueue(x, height - 1);
   }
+
   for (let y = 0; y < height; y += 1) {
     tryEnqueue(0, y);
     tryEnqueue(width - 1, y);
@@ -62,24 +60,16 @@ function applyOuterTransparentBackground(png) {
     const i = queue.pop();
     const x = i % width;
     const y = (i / width) | 0;
-    if (x > 0) {
-      tryEnqueue(x - 1, y);
-    }
-    if (x < width - 1) {
-      tryEnqueue(x + 1, y);
-    }
-    if (y > 0) {
-      tryEnqueue(x, y - 1);
-    }
-    if (y < height - 1) {
-      tryEnqueue(x, y + 1);
-    }
+
+    if (x > 0) tryEnqueue(x - 1, y);
+    if (x < width - 1) tryEnqueue(x + 1, y);
+    if (y > 0) tryEnqueue(x, y - 1);
+    if (y < height - 1) tryEnqueue(x, y + 1);
   }
 
   for (let i = 0; i < size; i += 1) {
-    if (!outer[i]) {
-      continue;
-    }
+    if (!outer[i]) continue;
+
     const idx = i << 2;
     data[idx + 3] = 0;
   }
@@ -88,15 +78,11 @@ function applyOuterTransparentBackground(png) {
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const i = y * width + x;
-      if (outer[i]) {
-        continue;
-      }
+      if (outer[i]) continue;
 
       const idx = i << 2;
       const max = Math.max(data[idx], data[idx + 1], data[idx + 2]);
-      if (max > BLACK_SOFT) {
-        continue;
-      }
+      if (max > BLACK_SOFT) continue;
 
       let touchesOuter = false;
       if (x > 0 && outer[i - 1]) {
@@ -109,13 +95,8 @@ function applyOuterTransparentBackground(png) {
         touchesOuter = true;
       }
 
-      if (!touchesOuter) {
-        continue;
-      }
-
-      if (max <= BLACK_CUTOFF) {
-        continue;
-      }
+      if (!touchesOuter) continue;
+      if (max <= BLACK_CUTOFF) continue;
 
       const alpha = Math.round(
         ((max - BLACK_CUTOFF) / (BLACK_SOFT - BLACK_CUTOFF)) * 255
@@ -123,21 +104,22 @@ function applyOuterTransparentBackground(png) {
       data[idx + 3] = Math.min(data[idx + 3], alpha);
     }
   }
-}
+};
 
-async function main() {
+const main = async () => {
   const input = process.argv[2] ?? ICON_SOURCE;
   const output = process.argv[3] ?? input;
 
   const buffer = fs.readFileSync(input);
   const png = PNG.sync.read(buffer);
+
   applyOuterTransparentBackground(png);
   fs.writeFileSync(output, PNG.sync.write(png));
 
   console.log(
     `Wrote transparent outer background: ${output} (${png.width}x${png.height})`
   );
-}
+};
 
 main().catch(error => {
   console.error(error);

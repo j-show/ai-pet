@@ -26,16 +26,16 @@ const DEFAULT_PET_SOURCE = path.join(
  * @param {string} dirPath
  * @returns {Promise<boolean>} True when `pet.json` exists in the directory.
  */
-async function hasPetPackage(dirPath) {
+const hasPetPackage = async dirPath => {
   try {
     await access(path.join(dirPath, 'pet.json'));
     return true;
   } catch {
     return false;
   }
-}
+};
 
-async function main() {
+const main = async () => {
   const DEFAULT_PET_PATH = `../${PET_SKINS_PKG}/${DEFAULT_PET_ID}`;
   const sourceReady = await hasPetPackage(DEFAULT_PET_SOURCE);
 
@@ -57,7 +57,7 @@ async function main() {
   // package only ships pet.json in git.
   await cp(DEFAULT_PET_SOURCE, PUBLIC, { recursive: true, force: true });
   console.log(`synced default pet from ${DEFAULT_PET_PATH} -> public/default`);
-}
+};
 
 main().catch(error => {
   console.error(error);

@@ -18,31 +18,23 @@ const PACKAGE_ROOT = path.resolve(__dirname, '..');
 const PETS_DIR = path.join(os.homedir(), '.ai-pet', 'pets');
 
 /**
- * One deployable pet under pet-skins/.
- * @typedef {object} PetEntry
- * @property {string} name Directory name (pet id).
- * @property {string} sourceAbs Absolute path to the package directory.
- * @property {boolean} installed Whether ~/.ai-pet/pets/<name> already exists.
- */
-
-/**
  * @param {string} name Pet directory name.
  * @returns {Promise<boolean>}
  */
-async function isInstalled(name) {
+const isInstalled = async name => {
   try {
     await access(path.join(PETS_DIR, name));
     return true;
   } catch {
     return false;
   }
-}
+};
 
 /**
  * @param {string} name Pet directory name.
  * @returns {Promise<void>}
  */
-async function uninstallPet(name) {
+const uninstallPet = async name => {
   const linkPath = path.join(PETS_DIR, name);
   const stat = await lstat(linkPath);
   if (stat.isSymbolicLink()) {
@@ -50,23 +42,23 @@ async function uninstallPet(name) {
   } else {
     await rm(linkPath, { recursive: true, force: true });
   }
-}
+};
 
 /**
  * @param {string} name Pet directory name.
  * @param {string} sourceAbs Absolute path to the source package.
  * @returns {Promise<void>}
  */
-async function installPet(name, sourceAbs) {
+const installPet = async (name, sourceAbs) => {
   const targetPath = path.join(PETS_DIR, name);
   await uninstallPet(name).catch(() => {});
   await cp(sourceAbs, targetPath, { recursive: true, force: true });
-}
+};
 
 /**
  * @returns {Promise<PetEntry[]>}
  */
-async function loadPets() {
+const loadPets = async () => {
   const deployable = await listDeployablePets(PACKAGE_ROOT);
   return Promise.all(
     deployable.map(async ({ name, sourceAbs }) => ({
@@ -75,13 +67,13 @@ async function loadPets() {
       installed: await isInstalled(name)
     }))
   );
-}
+};
 
 /**
  * @param {PetEntry[]} pets
  * @returns {Promise<void>}
  */
-function runSelector(pets) {
+const runSelector = pets => {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error('deploy requires an interactive terminal (TTY)');
   }
@@ -183,9 +175,9 @@ function runSelector(pets) {
     process.stdin.on('keypress', onKeypress);
     paint();
   });
-}
+};
 
-async function main() {
+const main = async () => {
   await mkdir(PETS_DIR, { recursive: true });
 
   const pets = await loadPets();
@@ -195,7 +187,7 @@ async function main() {
   }
 
   await runSelector(pets);
-}
+};
 
 main().catch(err => {
   console.error(err instanceof Error ? err.message : err);
