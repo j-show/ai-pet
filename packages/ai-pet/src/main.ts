@@ -1,5 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
+import { initProtocolDebug } from './config/protocol-debug';
 import {
   applyThemeSetting,
   envAnimationTickMs,
@@ -20,14 +21,14 @@ import {
 
 let activePet: DesktopPet | null = null;
 
-function showError(errorEl: HTMLElement, error: unknown) {
+const showError = (errorEl: HTMLElement, error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   errorEl.hidden = false;
   errorEl.textContent = message;
   console.error(error);
-}
+};
 
-async function bootstrap() {
+const bootstrap = async () => {
   activePet?.destroy();
   activePet = null;
 
@@ -36,19 +37,7 @@ async function bootstrap() {
   const contextMenu = document.querySelector<HTMLElement>('#context-menu');
   const titleEl = document.querySelector<HTMLElement>('#pet-title');
   const errorEl = document.querySelector<HTMLElement>('#error');
-  const textBubbleRoot = document.querySelector<HTMLElement>('#text-bubble');
-  const textBubbleClose =
-    document.querySelector<HTMLButtonElement>('#text-bubble-close');
-  const textBubbleHeader = document.querySelector<HTMLElement>(
-    '#text-bubble-header'
-  );
-  const textBubbleTitle =
-    document.querySelector<HTMLElement>('#text-bubble-title');
-  const textBubbleIcon =
-    document.querySelector<HTMLElement>('#text-bubble-icon');
-  const textBubbleContent = document.querySelector<HTMLElement>(
-    '#text-bubble-content'
-  );
+  const textBubblesRoot = document.querySelector<HTMLElement>('#text-bubbles');
 
   if (
     !canvas ||
@@ -56,18 +45,14 @@ async function bootstrap() {
     !contextMenu ||
     !titleEl ||
     !errorEl ||
-    !textBubbleRoot ||
-    !textBubbleClose ||
-    !textBubbleHeader ||
-    !textBubbleTitle ||
-    !textBubbleIcon ||
-    !textBubbleContent
+    !textBubblesRoot
   ) {
     throw new Error('Missing required DOM nodes');
   }
 
   const params = new URLSearchParams(window.location.search);
   const userEnv = await loadUserEnv();
+  initProtocolDebug({ urlParams: params, env: userEnv });
   const petId = params.get('pet') ?? envPetId(userEnv) ?? DEFAULT_PET_ID;
   const animationTickMs = envAnimationTickMs(userEnv);
   applyThemeSetting(envThemeSetting(userEnv));
@@ -86,14 +71,9 @@ async function bootstrap() {
       stageEl,
       contextMenu,
       titleEl,
-      textBubbleRoot,
-      textBubbleClose,
-      textBubbleHeader,
-      textBubbleTitle,
-      textBubbleIcon,
-      textBubbleContent
+      textBubblesRoot
     );
-    await pet.init(petId, animationTickMs);
+    await pet.init(petId, animationTickMs, userEnv);
     activePet = pet;
     setFocusRepaintHandler(() => {
       activePet?.refreshDisplay();
@@ -103,7 +83,7 @@ async function bootstrap() {
   } catch (error) {
     showError(errorEl, error);
   }
-}
+};
 
 window.addEventListener('DOMContentLoaded', () => {
   void bootstrap();

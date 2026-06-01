@@ -6,21 +6,41 @@ const host = process.env.TAURI_DEV_HOST;
 const DEV_PROTOCOL_PATH = '/__aipet/protocol';
 const DEV_SERVER = 'http://127.0.0.1:1420';
 
-function aipetDevProtocolPlugin(): Plugin {
+const aipetDevProtocolPlugin = (): Plugin => {
   return {
     name: 'aipet-dev-protocol',
     configureServer(server) {
       server.middlewares.use(
         DEV_PROTOCOL_PATH,
-        (req: IncomingMessage, res: ServerResponse) => {
+        async (req: IncomingMessage, res: ServerResponse) => {
           if (req.method !== 'POST' && req.method !== 'GET') {
             res.statusCode = 405;
             res.end('Method Not Allowed');
             return;
           }
 
-          const requestUrl = new URL(req.url ?? '', DEV_SERVER);
-          const protocolUrl = requestUrl.searchParams.get('url');
+          let protocolUrl = '';
+          if (req.method === 'GET') {
+            const requestUrl = new URL(req.url ?? '', DEV_SERVER);
+            protocolUrl = requestUrl.searchParams.get('url') ?? '';
+          } else {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            const raw = Buffer.concat(chunks).toString('utf8').trim();
+            if (raw.startsWith('{')) {
+              try {
+                const body = JSON.parse(raw) as { url?: string };
+                protocolUrl = body.url ?? '';
+              } catch {
+                protocolUrl = '';
+              }
+            } else {
+              protocolUrl = raw;
+            }
+          }
+
           if (!protocolUrl?.startsWith('aipet://')) {
             res.statusCode = 400;
             res.end('Missing or invalid url query parameter');
@@ -40,7 +60,7 @@ function aipetDevProtocolPlugin(): Plugin {
       );
     }
   };
-}
+};
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({

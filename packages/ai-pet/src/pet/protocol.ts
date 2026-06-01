@@ -1,12 +1,16 @@
-import type { AipetTextMessage, TextIcon } from './text-bubble';
+import {
+  DEFAULT_TEXT_SID,
+  type AipetTextMessage,
+  type TextIcon
+} from './text-bubble';
 import type { PetState } from './types';
 
-export const AIPET_SCHEME = 'aipet';
+export const AIPET_SCHEME = 'aipet:';
 
 const TEXT_ICON_VALUES = new Set<TextIcon>(['warn', 'error', 'info']);
 
 /** Protocol key → spritesheet animation state (excluding `base`). */
-export const AIPET_KEY_TO_STATE: Record<string, PetState> = {
+const AIPET_KEY_TO_STATE: Record<string, PetState> = {
   waving: 'waving',
   jumping: 'jumping',
   failed: 'failed',
@@ -16,7 +20,7 @@ export const AIPET_KEY_TO_STATE: Record<string, PetState> = {
   review: 'review'
 };
 
-export type AipetCommand =
+type AipetCommand =
   | { type: 'base' }
   | {
       type: 'animation';
@@ -27,91 +31,78 @@ export type AipetCommand =
     };
 
 /** Extract protocol key from `aipet://{key}` (host or pathname, lowercased). */
-export function parseAipetKey(url: string): string | null {
+const parseAipetKey = (url: string): string | null => {
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== `${AIPET_SCHEME}:`) {
-      return null;
-    }
+    if (!parsed.protocol.startsWith(AIPET_SCHEME)) return null;
 
-    const key = (
-      parsed.host || parsed.pathname.replace(/^\//, '')
-    ).toLowerCase();
-    return key || null;
+    const key = parsed.host || parsed.pathname.replace(/^\//, '');
+    return key.toLowerCase() || null;
   } catch {
-    return null;
+    //
   }
-}
 
-function parseLoopParam(url: string): boolean {
+  return null;
+};
+
+const parseLoopParam = (url: string): boolean => {
   try {
     const parsed = new URL(url);
     const raw = parsed.searchParams.get('loop');
-    if (raw === null || raw === '') {
-      return true;
-    }
+    if (raw == null || !raw) return true;
 
     const value = raw.trim().toLowerCase();
-    if (value === 'false' || value === '0' || value === 'no') {
-      return false;
-    }
 
-    return true;
+    return !(value === 'false' || value === '0' || value === 'no');
   } catch {
-    return true;
+    //
   }
-}
 
-function parseDefaultParam(url: string): boolean {
+  return true;
+};
+
+const parseDefaultParam = (url: string): boolean => {
   try {
     const parsed = new URL(url);
     const raw = parsed.searchParams.get('default');
-    if (raw === null || raw === '') {
-      return false;
-    }
+    if (raw == null || !raw) return false;
 
     const value = raw.trim().toLowerCase();
+
     return value === 'true' || value === '1' || value === 'yes';
   } catch {
-    return false;
+    //
   }
-}
 
-function parseCountParam(url: string): number | null {
+  return false;
+};
+
+const parseCountParam = (url: string): number | null => {
   try {
     const parsed = new URL(url);
     const raw = parsed.searchParams.get('count');
-    if (raw === null || raw === '') {
-      return null;
-    }
+    if (raw == null || !raw) return null;
 
     const value = Number.parseInt(raw.trim(), 10);
-    if (!Number.isFinite(value) || value < 1) {
-      console.warn(`Invalid aipet count: ${raw}`);
-      return null;
-    }
+    if (!Number.isFinite(value) || value < 1) return null;
 
     return value;
   } catch {
-    return null;
+    //
   }
-}
+
+  return null;
+};
 
 /** Parse `aipet://base` or `aipet://{key}?loop=true|false&count=N&default=true`. */
-export function parseAipetCommand(url: string): AipetCommand | null {
+export const parseAipetCommand = (url: string): AipetCommand | null => {
   const key = parseAipetKey(url);
-  if (!key || key === 'text') {
-    return null;
-  }
+  if (!key || key === 'text') return null;
 
-  if (key === 'base') {
-    return { type: 'base' };
-  }
+  if (key === 'base') return { type: 'base' };
 
   const state = AIPET_KEY_TO_STATE[key];
-  if (!state) {
-    return null;
-  }
+  if (!state) return null;
 
   const defaultMode = parseDefaultParam(url);
 
@@ -122,78 +113,86 @@ export function parseAipetCommand(url: string): AipetCommand | null {
     count: parseCountParam(url),
     defaultMode
   };
-}
+};
 
 /** Resolve animation state from URL, or null when not an animation command. */
-export function parseAipetState(url: string): PetState | null {
+export const parseAipetState = (url: string): PetState | null => {
   const command = parseAipetCommand(url);
-  if (command?.type === 'animation') {
-    return command.state;
-  }
-  return null;
-}
+  if (command?.type === 'animation') return command.state;
 
-function decodeQueryParam(value: string | null): string {
-  if (value === null || value === '') {
-    return '';
-  }
+  return null;
+};
+
+const decodeQueryParam = (value: string | null): string => {
+  if (value == null || !value) return '';
 
   try {
     return decodeURIComponent(value.replace(/\+/g, ' '));
   } catch {
-    return value;
+    //
   }
-}
 
-function parseTextIcon(raw: string | null): TextIcon | null {
+  return value;
+};
+
+const parseTextIcon = (raw: string | null): TextIcon | null => {
   const icon = raw?.trim().toLowerCase() ?? '';
-  if (!icon) {
-    return null;
-  }
-  if (TEXT_ICON_VALUES.has(icon as TextIcon)) {
-    return icon as TextIcon;
-  }
+  if (!icon) return null;
+
+  if (TEXT_ICON_VALUES.has(icon as TextIcon)) return icon as TextIcon;
+
   console.warn(`Unknown aipet text icon: ${icon}`);
   return null;
-}
+};
 
 export type AipetTextAction =
-  | { type: 'dismiss' }
+  | { type: 'dismiss'; sid?: string }
   | { type: 'show'; message: AipetTextMessage };
 
-/** Parse `aipet://text` (dismiss) or `aipet://text?tl=&icon=&txt=` (show). */
-export function parseAipetTextAction(url: string): AipetTextAction | null {
-  if (parseAipetKey(url) !== 'text') {
-    return null;
-  }
+const parseTextSid = (raw: string | null): string => {
+  const sid = raw?.trim() ?? '';
+  return sid || DEFAULT_TEXT_SID;
+};
+
+/** Parse `aipet://text`, `aipet://text?sid=`, or `aipet://text?sid=&tl=&icon=&txt=`. */
+export const parseAipetTextAction = (url: string): AipetTextAction | null => {
+  if (parseAipetKey(url) !== 'text') return null;
 
   try {
     const parsed = new URL(url);
-    if (parsed.search.length <= 1) {
-      return { type: 'dismiss' };
-    }
-
+    const sid = parseTextSid(parsed.searchParams.get('sid'));
     const title = decodeQueryParam(parsed.searchParams.get('tl'));
     const text = decodeQueryParam(parsed.searchParams.get('txt'));
+    const iconParam = parsed.searchParams.get('icon');
+
+    if (parsed.search.length <= 1) return { type: 'dismiss' };
+
+    if (!title && !text && !iconParam) {
+      return parsed.searchParams.has('sid')
+        ? { type: 'dismiss', sid }
+        : { type: 'dismiss' };
+    }
 
     return {
       type: 'show',
       message: {
+        sid,
         title: title || void 0,
-        icon: parseTextIcon(parsed.searchParams.get('icon')),
+        icon: parseTextIcon(iconParam),
         text
       }
     };
   } catch {
-    return null;
+    //
   }
-}
+
+  return null;
+};
 
 /** Convenience wrapper: returns show-message payload only (not dismiss). */
-export function parseAipetText(url: string): AipetTextMessage | null {
+export const parseAipetText = (url: string): AipetTextMessage | null => {
   const action = parseAipetTextAction(url);
-  if (action?.type === 'show') {
-    return action.message;
-  }
+  if (action?.type === 'show') return action.message;
+
   return null;
-}
+};

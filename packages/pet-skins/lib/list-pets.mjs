@@ -7,21 +7,21 @@ const SKIP_DIRS = new Set(['scripts', 'node_modules', 'lib', 'test']);
  * @param {string} dirPath
  * @returns {Promise<boolean>}
  */
-export async function hasPetPackage(dirPath) {
+export const hasPetPackage = async dirPath => {
   try {
     await access(path.join(dirPath, 'pet.json'));
     return true;
   } catch {
     return false;
   }
-}
+};
 
 /**
  * List deployable pet directories under the pet-skins package root.
  * @param {string} packageRoot - Absolute path to `packages/pet-skins`.
  * @returns {Promise<Array<{ name: string, sourceAbs: string }>>}
  */
-export async function listDeployablePets(packageRoot) {
+export const listDeployablePets = async packageRoot => {
   const entries = await readdir(packageRoot, { withFileTypes: true });
   const names = entries
     .filter(entry => entry.isDirectory() && !SKIP_DIRS.has(entry.name))
@@ -37,4 +37,4 @@ export async function listDeployablePets(packageRoot) {
   }
 
   return pets;
-}
+};

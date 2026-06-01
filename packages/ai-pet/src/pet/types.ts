@@ -63,4 +63,6 @@ export interface PlayRangeOptions {
   toFrame: number;
   loop?: boolean;
   onComplete?: () => void;
+  /** Reset canvas bitmaps before first frame (e.g. drag phase transitions). */
+  hardSwitch?: boolean;
 }

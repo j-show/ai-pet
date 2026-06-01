@@ -2,7 +2,8 @@
 /**
  * Open an aipet:// URL.
  * - During `pnpm pet:dev`, forwards to the Vite dev bridge on :1420
- * - Otherwise uses the OS handler (`open` / `start` / `xdg-open`)
+ * - Otherwise uses the OS handler (`open` / `start` / `xdg-open`); the running
+ *   app keeps a single instance via tauri-plugin-single-instance + deep-link.
  */
 import { spawnSync } from 'node:child_process';
 
@@ -15,20 +16,23 @@ if (!url?.startsWith('aipet://')) {
   process.exit(1);
 }
 
-async function sendToDevServer() {
-  const endpoint = `${DEV_SERVER}${DEV_PROTOCOL_PATH}?url=${encodeURIComponent(url)}`;
-  const response = await fetch(endpoint, { method: 'POST' });
+const sendToDevServer = async () => {
+  const response = await fetch(`${DEV_SERVER}${DEV_PROTOCOL_PATH}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  });
   if (!response.ok) {
     throw new Error(`dev bridge responded ${response.status}`);
   }
-}
+};
 
-function openWithSystem() {
+const openWithSystem = () => {
   const platform = process.platform;
   let result;
 
   if (platform === 'win32') {
-    result = spawnSync('cmd', ['/c', 'start', '', url], {
+    result = spawnSync('rundll32', ['url.dll,FileProtocolHandler', url], {
       encoding: 'utf8',
       shell: false
     });
@@ -38,15 +42,14 @@ function openWithSystem() {
     result = spawnSync('xdg-open', [url], { encoding: 'utf8' });
   }
 
-  if (result.error) {
-    throw result.error;
-  }
+  if (result.error) throw result.error;
+
   if (result.status !== 0) {
-    const message =
-      result.stderr?.trim() || result.stdout?.trim() || 'system open failed';
-    throw new Error(message);
+    throw new Error(
+      result.stderr?.trim() || result.stdout?.trim() || 'system open failed'
+    );
   }
-}
+};
 
 try {
   await sendToDevServer();

@@ -72,8 +72,27 @@ pnpm sync-pets        # 可选：从 ../pet-skins/sugarwing 同步到 public/def
 指定宠物启动（开发模式）：
 
 ```bash
-pnpm tauri dev -- --url "http://localhost:1420/?pet=sugarwing"
+pnpm tauri dev -- --url "http://localhost:1420/?pet=sugarwing&debug=protocol"
 ```
+
+### 协议调试
+
+在 **应用窗口** 的 DevTools 控制台（非终端）打印收到的 `aipet://` 协议；开启后还会：
+
+- 自动打开 WebView 开发者工具（需重新编译/启动应用）
+- 在窗口左下角显示协议日志浮层
+
+配置（修改 `~/.ai-pet/.env` 后需**完全重启** AI Pet）：
+
+```env
+AI_PET_DEBUG_PROTOCOL=true
+```
+
+或开发 URL：`?debug=protocol`
+
+启动后应看到黄色警告：`[ai-pet protocol] debug ON`；若为 `OFF` 或 `not found`，说明 `.env` 未加载或键名有误（勿加 `#` 注释）。
+
+**注意**：`pnpm pet:open` 的终端输出里不会出现协议日志，请在宠物窗口按 `Ctrl+Shift+I` 查看控制台，或看左下角浮层。
 
 ## 交互
 
@@ -121,8 +140,9 @@ pnpm pet:open aipet://base
 
 | URL                                    | 行为                 |
 | -------------------------------------- | -------------------- |
-| `aipet://text`                         | 关闭文字框，窗口缩回 |
-| `aipet://text?tl=...&icon=...&txt=...` | 显示文字框（渐现）   |
+| `aipet://text` | 关闭全部文字框 |
+| `aipet://text?sid={SID}` | 关闭指定会话文字框 |
+| `aipet://text?sid={SID}&tl=...&icon=...&txt=...` | 显示/更新文字框（相同 sid 覆盖，不同 sid 向下堆叠） |
 
 | 参数   | 说明                                                          |
 | ------ | ------------------------------------------------------------- |

@@ -30,16 +30,16 @@ const DIST_EXE = path.join(DIST_DIR, 'ai-pet.exe');
  * @param {string} p
  * @returns {Promise<boolean>}
  */
-async function exists(p) {
+const exists = async p => {
   try {
     await stat(p);
     return true;
   } catch {
     return false;
   }
-}
+};
 
-async function main() {
+const main = async () => {
   await mkdir(DIST_DIR, { recursive: true });
 
   if (await exists(SRC_EXE)) {
@@ -67,7 +67,7 @@ async function main() {
       `skipped ${path.relative(REPO_ROOT, SRC_BUNDLE_DIR)} (not found)`
     );
   }
-}
+};
 
 main().catch(error => {
   console.error(error);

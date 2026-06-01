@@ -20,20 +20,20 @@ const TAURI_PORTABLE_CONF = path.join(
  * @param {string} filePath
  * @returns {Promise<unknown>}
  */
-async function readJson(filePath) {
+const readJson = async filePath => {
   const raw = await readFile(filePath, 'utf8');
   return JSON.parse(raw);
-}
+};
 
 /**
  * @param {string} filePath
  * @param {unknown} json
  * @returns {Promise<void>}
  */
-async function writeJson(filePath, json) {
+const writeJson = async (filePath, json) => {
   const raw = `${JSON.stringify(json, null, 2)}\n`;
   await writeFile(filePath, raw, 'utf8');
-}
+};
 
 /**
  * Update `[package].version` in Cargo.toml without touching dependency tables.
@@ -41,7 +41,7 @@ async function writeJson(filePath, json) {
  * @param {string} nextVersion
  * @returns {string}
  */
-function updateCargoPackageVersion(cargoToml, nextVersion) {
+const updateCargoPackageVersion = (cargoToml, nextVersion) => {
   const lines = cargoToml.split(/\r?\n/);
   const pkgIdx = lines.findIndex(l => l.trim() === '[package]');
   if (pkgIdx === -1) {
@@ -73,9 +73,9 @@ function updateCargoPackageVersion(cargoToml, nextVersion) {
   }
 
   return `${lines.join('\n')}\n`;
-}
+};
 
-async function main() {
+const main = async () => {
   const pkg = await readJson(PACKAGE_JSON);
   const version = pkg?.version;
   if (typeof version !== 'string' || version.trim() === '') {
@@ -102,7 +102,7 @@ async function main() {
   await writeJson(TAURI_PORTABLE_CONF, portable);
 
   console.log(`synced version to ${version}`);
-}
+};
 
 main().catch(error => {
   console.error(error);
