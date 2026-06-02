@@ -21,9 +21,10 @@
     "sync-version": "node scripts/sync-version.mjs",
     "preview": "vite preview",
     "dev": "tauri dev",
-    "build": "pnpm build:msi && pnpm build:portable:win && pnpm export",
-    "build:msi": "tauri build",
-    "build:portable:win": "tauri build --no-bundle --config src-tauri/tauri.portable.conf.json"
+    "build:mac": "pnpm build:app",
+    "build:win": "pnpm build:app && pnpm build:portable",
+    "build:app": "tauri build",
+    "build:portable": "tauri build --no-bundle --config src-tauri/tauri.portable.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

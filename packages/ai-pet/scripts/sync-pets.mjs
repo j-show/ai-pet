@@ -12,7 +12,7 @@ const PACKAGE_ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(PACKAGE_ROOT, 'public', 'default');
 
 const PET_SKINS_PKG = 'pet-skins';
-const DEFAULT_PET_ID = 'sugarwing';
+const DEFAULT_PET_ID = 'mochibot';
 
 /** Relative to this package: ../pet-skins/<id> */
 const DEFAULT_PET_SOURCE = path.join(

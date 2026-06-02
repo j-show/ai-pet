@@ -33,6 +33,9 @@ const bootstrap = async () => {
   activePet = null;
 
   const canvas = document.querySelector<HTMLCanvasElement>('#pet-canvas');
+  const canvasWrap = document.querySelector<HTMLElement>('#pet-canvas-wrap');
+  const scaleHandle =
+    document.querySelector<HTMLButtonElement>('#pet-scale-handle');
   const stageEl = document.querySelector<HTMLElement>('#pet-stage');
   const contextMenu = document.querySelector<HTMLElement>('#context-menu');
   const titleEl = document.querySelector<HTMLElement>('#pet-title');
@@ -41,6 +44,8 @@ const bootstrap = async () => {
 
   if (
     !canvas ||
+    !canvasWrap ||
+    !scaleHandle ||
     !stageEl ||
     !contextMenu ||
     !titleEl ||
@@ -68,6 +73,8 @@ const bootstrap = async () => {
   try {
     const pet = new DesktopPet(
       canvas,
+      canvasWrap,
+      scaleHandle,
       stageEl,
       contextMenu,
       titleEl,

@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos
+          - os: windows-2022
+            platform: windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (macOS)
+        if: matrix.platform == 'macos'
+        run: pnpm build:mac
+
+      - name: Build (Windows)
+        if: matrix.platform == 'windows'
+        run: pnpm build:win
+
+      - name: Prepare release assets (macOS)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          VERSION="${GITHUB_REF_NAME}"
+
+          # DMG
+          DMG=$(find packages/ai-pet/src-tauri/target -path "*/release/bundle/dmg/*.dmg" -type f | head -1 || true)
+          if [ -z "$DMG" ]; then
+            echo "❌ No .dmg found under packages/ai-pet/src-tauri/target/**/release/bundle/dmg/" >&2
+            exit 1
+          fi
+          cp "$DMG" "release-assets/AI-Pet-${VERSION}-macOS.dmg"
+
+          # Optional: zip .app for convenience
+          APP=$(find packages/ai-pet/src-tauri/target -path "*/release/bundle/macos/*.app" -type d | head -1 || true)
+          if [ -n "$APP" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$APP" "release-assets/AI-Pet-${VERSION}-macOS.app.zip"
+          fi
+
+      - name: Prepare release assets (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+          $version = $env:GITHUB_REF_NAME
+
+          # MSI installer
+          $msi = Get-ChildItem -Path 'packages/ai-pet/src-tauri/target' -Recurse -Include *.msi -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\release\\bundle\\msi\\' } |
+            Select-Object -First 1
+          if ($null -eq $msi) {
+            throw "No .msi found under packages/ai-pet/src-tauri/target/**/release/bundle/msi/"
+          }
+          Copy-Item $msi.FullName (Join-Path release-assets ("AI-Pet-$version-Windows.msi"))
+
+          # Portable exe (built with --no-bundle)
+          $exe = Get-ChildItem -Path 'packages/ai-pet/src-tauri/target' -Recurse -Include *.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\release\\' -and $_.FullName -notmatch '\\bundle\\' } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($null -ne $exe) {
+            $portableDir = Join-Path 'release-assets' 'AI-Pet-Portable'
+            New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+            Copy-Item $exe.FullName (Join-Path $portableDir $exe.Name)
+            $zipPath = Join-Path 'release-assets' ("AI-Pet-$version-Windows-Portable.zip")
+            Compress-Archive -Path "$portableDir/*" -DestinationPath $zipPath -Force
+            Remove-Item -Recurse -Force $portableDir
+          } else {
+            Write-Warning "No portable .exe found (optional)"
+          }
+
+      - name: List prepared assets
+        shell: bash
+        run: ls -la release-assets
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-assets-${{ matrix.platform }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-22.04
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-assets-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List downloaded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la release-assets
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: AI Pet ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

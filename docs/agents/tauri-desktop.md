@@ -17,7 +17,7 @@ pnpm build:msi              # tauri build (installers)
 pnpm build:portable:win     # tauri build --no-bundle --config src-tauri/tauri.portable.conf.json
 pnpm export                 # copy exe + bundle → repo root dist/
 pnpm clean                  # remove dist, src-tauri/target, src-tauri/gen
-pnpm sync-pets              # merge pet-skins/sugarwing → public/default/
+pnpm sync-pets              # merge pet-skins/mochibot → public/default/
 pnpm sync-version           # package.json version → Cargo.toml + tauri conf
 cargo test                  # from src-tauri/
 ```

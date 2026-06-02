@@ -96,6 +96,7 @@ export class SpritePlayer {
   private playing = false;
   /** Bumped on every playback switch to ignore stale rAF callbacks. */
   private playbackToken = 0;
+  private scale: number;
 
   constructor({
     canvas,
@@ -109,6 +110,7 @@ export class SpritePlayer {
 
     this.canvas = canvas;
     this.atlas = atlas;
+    this.scale = scale;
     this.frameIntervalMs = frameIntervalMs;
     this.spritesheet = prepareSpritesheet(
       spritesheet,
@@ -121,16 +123,22 @@ export class SpritePlayer {
     }
     this.ctx = ctx;
 
-    const dpr = window.devicePixelRatio || 1;
-    const pixelWidth = Math.ceil(Math.round(atlas.cellWidth * scale) * dpr);
-    const pixelHeight = Math.ceil(Math.round(atlas.cellHeight * scale) * dpr);
-    canvas.width = pixelWidth;
-    canvas.height = pixelHeight;
-    canvas.style.width = `${Math.round(atlas.cellWidth * scale)}px`;
-    canvas.style.height = `${Math.round(atlas.cellHeight * scale)}px`;
+    this.applyCanvasDimensions(scale);
 
     canvasOwner.set(canvas, this);
     this.wipeDisplay();
+  }
+
+  private applyCanvasDimensions(scale: number) {
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = Math.round(this.atlas.cellWidth * scale);
+    const displayHeight = Math.round(this.atlas.cellHeight * scale);
+    const pixelWidth = Math.ceil(displayWidth * dpr);
+    const pixelHeight = Math.ceil(displayHeight * dpr);
+    this.canvas.width = pixelWidth;
+    this.canvas.height = pixelHeight;
+    this.canvas.style.width = `${displayWidth}px`;
+    this.canvas.style.height = `${displayHeight}px`;
   }
 
   /** Stop rAF, drop callbacks, invalidate stale ticks — does not clear the canvas. */
@@ -328,6 +336,22 @@ export class SpritePlayer {
   /** Cancel in-flight playback (used when interrupting from outside). */
   protected cancelPlayback() {
     this.interruptPlayback();
+  }
+
+  public getScale(): number {
+    return this.scale;
+  }
+
+  /** Resize display canvas and redraw the current frame. */
+  public setScale(scale: number, hardSwitch = true) {
+    if (this.disposed) return;
+
+    this.scale = scale;
+    this.applyCanvasDimensions(scale);
+
+    if (this.animation) {
+      this.paintFrame(hardSwitch);
+    }
   }
 
   /** Tear down rAF loop; safe to call multiple times. */

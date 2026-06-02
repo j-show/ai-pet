@@ -1,6 +1,6 @@
 import type { PetAnimation, PetAtlas } from './types';
 
-/** Standard Codex digital pet atlas layout (sugarwing / pet_request.json). */
+/** Standard Codex digital pet atlas layout (mochibot / pet_request.json). */
 export const CODEX_DEFAULT_ATLAS: PetAtlas = {
   columns: 8,
   cellWidth: 192,
@@ -20,7 +20,7 @@ export const CODEX_DEFAULT_ANIMATIONS: PetAnimation[] = [
   { state: 'review', row: 8, frames: 6, loop: true }
 ];
 
-export const DEFAULT_PET_ID = 'sugarwing';
+export const DEFAULT_PET_ID = 'mochibot';
 
 /** Bundled fallback pet served from `public/default/`. */
 export const DEFAULT_PET_BASE = '/default';

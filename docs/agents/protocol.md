@@ -17,7 +17,7 @@ Load when editing `src/pet/protocol.ts`, `protocol-handler.ts`, text bubbles, or
 | `aipet://text?sid=X` | Dismiss session `X` only |
 | `aipet://text?sid=X&tl=&txt=&icon=` | Show/update; same `sid` replaces, different `sid` stacks downward |
 
-Params: `tl` (title), `txt` (body, `%0A` newlines), `icon` = `warn` \| `error` \| `info`. Default `sid` = `default` if omitted.
+Params: `tl` (title), `txt` (body, `%0A` newlines), `icon` = `warn` \| `error` \| `info` \| `loading`. Default `sid` = `default` if omitted.
 
 ## Animation (`aipet://{key}`)
 

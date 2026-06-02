@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn rejects_path_traversal_pet_ids() {
-        assert!(validate_pet_id("sugarwing").is_ok());
+        assert!(validate_pet_id("mochibot").is_ok());
         assert!(validate_pet_id("../etc").is_err());
         assert!(validate_pet_id("bad/id").is_err());
     }

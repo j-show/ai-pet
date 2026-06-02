@@ -1,4 +1,4 @@
-export type TextIcon = 'warn' | 'error' | 'info';
+export type TextIcon = 'warn' | 'error' | 'info' | 'loading';
 
 export interface AipetTextMessage {
   /** Session id; same sid updates in place, different sids stack vertically. */
@@ -29,7 +29,7 @@ export const BUBBLE_ANCHOR_Y_RATIO = 1;
 export const DEFAULT_TEXT_SID = 'default';
 const BUBBLE_STACK_GAP_PX = 8;
 
-const ICON_LABELS: Record<TextIcon, string> = {
+const ICON_LABELS: Record<Exclude<TextIcon, 'loading'>, string> = {
   warn: '!',
   error: '×',
   info: 'i'
@@ -101,12 +101,26 @@ class TextBubbleItem {
     this.iconEl.className = 'text-bubble__icon';
     if (message.icon) {
       this.iconEl.hidden = false;
-      this.iconEl.textContent = ICON_LABELS[message.icon];
+      this.iconEl.classList.remove('text-bubble__icon--none');
       this.iconEl.classList.add(`text-bubble__icon--${message.icon}`);
+      if (message.icon === 'loading') {
+        this.iconEl.textContent = '';
+        this.iconEl.removeAttribute('aria-hidden');
+        this.iconEl.setAttribute('role', 'status');
+        this.iconEl.setAttribute('aria-label', '加载中');
+      } else {
+        this.iconEl.textContent = ICON_LABELS[message.icon];
+        this.iconEl.setAttribute('aria-hidden', 'true');
+        this.iconEl.removeAttribute('role');
+        this.iconEl.removeAttribute('aria-label');
+      }
     } else {
       this.iconEl.hidden = true;
       this.iconEl.classList.add(`text-bubble__icon--none`);
       this.iconEl.textContent = '';
+      this.iconEl.setAttribute('aria-hidden', 'true');
+      this.iconEl.removeAttribute('role');
+      this.iconEl.removeAttribute('aria-label');
     }
 
     const hasHeader = Boolean(title) || Boolean(message.icon);
@@ -145,6 +159,9 @@ class TextBubbleItem {
     this.iconEl.hidden = true;
     this.iconEl.textContent = '';
     this.iconEl.className = 'text-bubble__icon';
+    this.iconEl.setAttribute('aria-hidden', 'true');
+    this.iconEl.removeAttribute('role');
+    this.iconEl.removeAttribute('aria-label');
   }
 
   public layoutAt(anchorX: number, topY: number) {
@@ -218,7 +235,7 @@ export class TextBubbleStack {
     const title = message.title?.trim() ?? '';
     const text = message.text ?? '';
 
-    if (!title && !text) {
+    if (!title && !text && !message.icon) {
       this.dismiss(sid);
       return;
     }

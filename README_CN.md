@@ -39,7 +39,7 @@ pnpm install
 
 ### `pet.json` 字段
 
-以 `packages/pet-skins/sugarwing/pet.json` 为准：
+以 `packages/pet-skins/mochibot/pet.json` 为准：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |

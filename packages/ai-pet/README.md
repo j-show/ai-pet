@@ -11,7 +11,7 @@
 | `pet.json`         | 元数据（id、displayName、spritesheetPath 等） |
 | `spritesheet.webp` | 雪碧图动画（由 `pet.json` 引用）              |
 
-示例见 [`public/default/`](public/default/)（内置默认宠物 Sugarwing），或 [`../pet-skins/sugarwing/`](../pet-skins/sugarwing/)。
+示例见 [`public/default/`](public/default/)（内置默认宠物 mochibot），或 [`../pet-skins/mochibot/`](../pet-skins/mochibot/)。
 
 可选扩展字段（省略时使用标准 Codex 9 行动画布局，见 `src/pet/codex-defaults.ts`）：
 
@@ -33,20 +33,22 @@
 - `~/.ai-pet/pets/` — 用户宠物目录
 
 ```env
-PET=sugarwing
+PET=mochibot
 AI_PET_ANIMATION_TICK=250
 AI_PET_THEME=auto
+AI_PET_SCALE=1
 ```
 
 | 变量                    | 说明                                  | 默认        |
 | ----------------------- | ------------------------------------- | ----------- |
-| `PET`                   | 默认宠物 id                           | `sugarwing` |
+| `PET`                   | 默认宠物 id                           | `mochibot` |
 | `AI_PET_ANIMATION_TICK` | 动画帧间隔（毫秒）                    | `250`       |
 | `AI_PET_THEME`          | 界面主题：`auto` \| `light` \| `dark` | `auto`      |
+| `AI_PET_SCALE`          | 宠物显示缩放（`0.5`–`2.0`，文本框不缩放） | `1`       |
 
 `auto` 跟随系统亮/暗色，影响文字框与右键菜单样式。
 
-宠物 id 优先级：`?pet=` URL 参数 > `~/.ai-pet/.env` 中的 `PET` > 内置默认 `sugarwing`。
+宠物 id 优先级：`?pet=` URL 参数 > `~/.ai-pet/.env` 中的 `PET` > 内置默认 `mochibot`。
 
 ## 开发
 
@@ -64,15 +66,15 @@ pnpm pet:build        # 构建前端 + 打包应用
 pnpm install
 pnpm dev              # tauri dev
 pnpm open aipet://waving
-pnpm sync-pets        # 可选：从 ../pet-skins/sugarwing 同步到 public/default
+pnpm sync-pets        # 可选：从 ../pet-skins/mochibot 同步到 public/default
 ```
 
-`tauri dev` / `tauri build` 前会尝试运行 `sync-pets.mjs`：若 `packages/pet-skins/sugarwing` 存在则**合并**更新 `public/default/`（保留目标目录中源未提供的文件，例如已提交的雪碧图）；否则使用已有的 `public/default/`。
+`tauri dev` / `tauri build` 前会尝试运行 `sync-pets.mjs`：若 `packages/pet-skins/mochibot` 存在则**合并**更新 `public/default/`（保留目标目录中源未提供的文件，例如已提交的雪碧图）；否则使用已有的 `public/default/`。
 
 指定宠物启动（开发模式）：
 
 ```bash
-pnpm tauri dev -- --url "http://localhost:1420/?pet=sugarwing&debug=protocol"
+pnpm tauri dev -- --url "http://localhost:1420/?pet=mochibot&debug=protocol"
 ```
 
 ### 协议调试
@@ -101,7 +103,11 @@ AI_PET_DEBUG_PROTOCOL=true
 | 拖动 | 移动窗口；左/右拖触发跑步动画（开始 → 循环 → 结束）      |
 | 单击 | 播放挥手动画，结束后回到 idle                            |
 | 右键 | 弹出菜单（退出）                                         |
+| 缩放 | 悬停到宠物右下角的缩放图标后拖动，可调整宠物显示大小（仅缩放宠物，文本框不缩放；会保存到 `AI_PET_SCALE`） |
+| 悬停 | 若当前没有播放内容（`idle` 不算），悬停会播放 3 次 `jumping` |
 | 空闲 | 每 25～55 秒随机播放一次 `jumping`，回到 idle 后继续调度 |
+
+> 说明：窗口大小会跟随宠物与文本框自动调整。宠物缩得很小时右键菜单仍会自动扩窗以保证可见，菜单文字强制单行显示（超出部分省略）。
 
 ## 应用协议 `aipet://`
 
@@ -147,7 +153,7 @@ pnpm pet:open aipet://base
 | 参数   | 说明                                                          |
 | ------ | ------------------------------------------------------------- |
 | `tl`   | 标题，单行省略；需 URL 编码                                   |
-| `icon` | `warn`（橙三角）\| `error`（红）\| `info`（蓝）；不传则不显示 |
+| `icon` | `warn`（橙三角）\| `error`（红）\| `info`（蓝）\| `loading`（旋转圆环）；不传则不显示 |
 | `txt`  | 正文，最多 5 行省略；支持 `%0A` 换行                          |
 
 悬停文字框左上角出现 × 按钮可关闭。窗口以右上角为锚点扩展，避免宠物被裁切。
@@ -156,6 +162,7 @@ pnpm pet:open aipet://base
 pnpm pet:open aipet://text
 pnpm pet:open 'aipet://text?tl=标题&icon=info&txt=正文内容'
 pnpm pet:open 'aipet://text?icon=warn&txt=多行%0A文字'
+pnpm pet:open 'aipet://text?tl=确认任务&icon=loading&txt=处理中…'
 ```
 
 ## 构建

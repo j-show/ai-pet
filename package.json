@@ -9,13 +9,12 @@
     "fix:all": "pnpm fix:prettier && pnpm fix:eslint",
     "fix:prettier": "prettier --config ./.prettierrc --write .",
     "fix:eslint": "eslint --config ./eslint.config.js --fix --quiet --no-warn-ignored .",
-    "lint": "eslint --config ./eslint.config.js --quiet --no-warn-ignored .",
-    "typecheck": "pnpm -F ai-pet exec tsc --noEmit",
     "deploy": "pnpm -F pet-skins deploy",
     "pet:open": "pnpm -F ai-pet open",
     "pet:sync": "pnpm -F ai-pet sync-version",
     "pet:dev": "pnpm -F ai-pet dev",
-    "pet:build": "pnpm -F ai-pet build",
+    "build:mac": "pnpm -F ai-pet build:mac",
+    "build:win": "pnpm -F ai-pet build:win",
     "test": "pnpm -r test"
   },
   "engines": {

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { LogicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
+import { clampPetScale, envPetScale, savePetScale } from '../config/pet-scale';
 import { loadTextPayload } from '../config/text-payload';
 import { type UserEnv, DEFAULT_ANIMATION_TICK_MS } from '../config/user-env';
 import {
@@ -28,6 +29,7 @@ const TAP_MAX_MS = 350;
 const IDLE_BEHAVIOR_MIN_MS = 25_000;
 const IDLE_BEHAVIOR_MAX_MS = 55_000;
 const IDLE_BEHAVIOR_STATES: PetState[] = ['jumping'];
+const HOVER_JUMP_CYCLES = 3;
 
 /** 1-based frames 1-2 → 0-based 0-1 */
 const DRAG_START_FROM = 0;
@@ -40,6 +42,16 @@ const DRAG_END_FROM = 6;
 const DRAG_END_TO = 7;
 
 type DragPhase = 'none' | 'start' | 'loop' | 'end';
+
+interface ScaleSession {
+  /** Screen-space top-left of the pet; fixed for the whole drag. */
+  anchorScreenX: number;
+  anchorScreenY: number;
+  /** `hypot(cellWidth, cellHeight)` — scale 1 reference diagonal. */
+  baseDist: number;
+  pointerId: number;
+  changed: boolean;
+}
 
 interface DragSession {
   startWindowX: number | null;
@@ -58,11 +70,17 @@ export class DesktopPet {
   private busy = false;
 
   private readonly canvas: HTMLCanvasElement;
+  private readonly canvasWrap: HTMLElement;
+  private readonly scaleHandle: HTMLButtonElement;
   private readonly stageEl: HTMLElement;
   private readonly contextMenu: HTMLElement;
   private readonly titleEl: HTMLElement;
   private readonly textBubbles: TextBubbleStack;
 
+  private petScale = 1;
+  private scaleSession: ScaleSession | null = null;
+  private scaleDragRaf = 0;
+  private pendingPetScale: number | null = null;
   private pointerDown: { x: number; y: number; time: number } | null = null;
   private activePointerId: number | null = null;
   private dragSession: DragSession | null = null;
@@ -73,18 +91,40 @@ export class DesktopPet {
 
   constructor(
     canvas: HTMLCanvasElement,
+    canvasWrap: HTMLElement,
+    scaleHandle: HTMLButtonElement,
     stageEl: HTMLElement,
     contextMenu: HTMLElement,
     titleEl: HTMLElement,
     textBubblesRoot: HTMLElement
   ) {
     this.canvas = canvas;
+    this.canvasWrap = canvasWrap;
+    this.scaleHandle = scaleHandle;
     this.stageEl = stageEl;
     this.contextMenu = contextMenu;
     this.titleEl = titleEl;
     this.textBubbles = new TextBubbleStack(textBubblesRoot, () => {
       void this.resizeWindow();
     });
+  }
+
+  private petDisplayWidth(): number {
+    if (!this.pet) return 0;
+    // Prefer DOM-measured size to avoid rounding/DPR drift during large scales.
+    const rect = this.canvas.getBoundingClientRect();
+    return rect.width > 0
+      ? Math.round(rect.width)
+      : Math.round(this.pet.atlas.cellWidth * this.petScale);
+  }
+
+  private petDisplayHeight(): number {
+    if (!this.pet) return 0;
+    // Prefer DOM-measured size to avoid rounding/DPR drift during large scales.
+    const rect = this.canvas.getBoundingClientRect();
+    return rect.height > 0
+      ? Math.round(rect.height)
+      : Math.round(this.pet.atlas.cellHeight * this.petScale);
   }
 
   private async resizeWindow() {
@@ -94,8 +134,8 @@ export class DesktopPet {
 
     try {
       const appWindow = getCurrentWindow();
-      const petWidth = this.pet.atlas.cellWidth;
-      const petHeight = this.pet.atlas.cellHeight;
+      const petWidth = this.petDisplayWidth();
+      const petHeight = this.petDisplayHeight();
       const anchor = bubbleAnchorForPet(petWidth, petHeight);
 
       await new Promise<void>(resolve => {
@@ -130,8 +170,18 @@ export class DesktopPet {
           ? ''
           : `translate(${offsetX}px, ${offsetY}px)`;
 
-      const newWidth = maxX - minX;
-      const newHeight = maxY - minY;
+      let newWidth = maxX - minX;
+      let newHeight = maxY - minY;
+
+      // Ensure the window can also contain the context menu when open, otherwise
+      // it gets clipped when the pet is scaled down to a tiny window.
+      if (!this.contextMenu.hidden) {
+        const menuRect = this.contextMenu.getBoundingClientRect();
+        newWidth = Math.max(newWidth, Math.ceil(menuRect.right));
+        newHeight = Math.max(newHeight, Math.ceil(menuRect.bottom));
+        newWidth = Math.max(newWidth, Math.ceil(menuRect.width));
+        newHeight = Math.max(newHeight, Math.ceil(menuRect.height));
+      }
 
       const outerPos = await appWindow.outerPosition();
       const innerPos = await appWindow.innerPosition();
@@ -153,6 +203,21 @@ export class DesktopPet {
       await appWindow.setPosition(
         new PhysicalPosition(newInnerLeft + chromeLeft, outerPos.y)
       );
+
+      // After resizing, clamp the context menu so it stays inside the window.
+      if (!this.contextMenu.hidden) {
+        const size = await appWindow.innerSize();
+        const menuRect = this.contextMenu.getBoundingClientRect();
+        const maxLeft = Math.max(0, size.width - Math.ceil(menuRect.width));
+        const maxTop = Math.max(0, size.height - Math.ceil(menuRect.height));
+        const nextLeft = Math.min(
+          Math.max(0, Math.round(menuRect.left)),
+          maxLeft
+        );
+        const nextTop = Math.min(Math.max(0, Math.round(menuRect.top)), maxTop);
+        this.contextMenu.style.left = `${nextLeft}px`;
+        this.contextMenu.style.top = `${nextTop}px`;
+      }
     } catch (error) {
       console.warn('Failed to resize window:', error);
     }
@@ -509,10 +574,149 @@ export class DesktopPet {
     this.finishPointerInteraction(event);
   };
 
+  private cancelScaleDragRaf() {
+    if (this.scaleDragRaf) {
+      cancelAnimationFrame(this.scaleDragRaf);
+      this.scaleDragRaf = 0;
+    }
+  }
+
+  private flushScaleDragFrame() {
+    this.scaleDragRaf = 0;
+    const next = this.pendingPetScale;
+    this.pendingPetScale = null;
+    if (next == null || next === this.petScale) {
+      return;
+    }
+
+    this.petScale = next;
+    this.player?.setScale(next, false);
+  }
+
+  private scheduleScaleDragUpdate(nextScale: number) {
+    this.pendingPetScale = nextScale;
+    if (this.scaleDragRaf) {
+      return;
+    }
+
+    this.scaleDragRaf = requestAnimationFrame(() => {
+      this.flushScaleDragFrame();
+    });
+  }
+
+  private bindScaleHandle() {
+    const onScalePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || !this.pet) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rect = this.canvasWrap.getBoundingClientRect();
+      const baseDist = Math.hypot(
+        this.pet.atlas.cellWidth,
+        this.pet.atlas.cellHeight
+      );
+      if (baseDist < 1) {
+        return;
+      }
+
+      this.cancelScaleDragRaf();
+      this.pendingPetScale = null;
+      this.scaleSession = {
+        anchorScreenX: rect.left,
+        anchorScreenY: rect.top,
+        baseDist,
+        pointerId: event.pointerId,
+        changed: false
+      };
+
+      try {
+        this.scaleHandle.setPointerCapture(event.pointerId);
+      } catch {
+        // Fallback: window-level listeners still run.
+      }
+    };
+
+    const onScalePointerMove = (event: PointerEvent) => {
+      const session = this.scaleSession;
+      if (!session || event.pointerId !== session.pointerId) {
+        return;
+      }
+
+      const dist = Math.hypot(
+        event.clientX - session.anchorScreenX,
+        event.clientY - session.anchorScreenY
+      );
+      const nextScale = clampPetScale(dist / session.baseDist);
+      if (nextScale === this.petScale && nextScale === this.pendingPetScale) {
+        return;
+      }
+
+      session.changed = true;
+      this.scheduleScaleDragUpdate(nextScale);
+    };
+
+    const finishScaleDrag = async (event: PointerEvent) => {
+      const session = this.scaleSession;
+      if (!session || event.pointerId !== session.pointerId) {
+        return;
+      }
+
+      if (this.scaleHandle.hasPointerCapture(event.pointerId)) {
+        this.scaleHandle.releasePointerCapture(event.pointerId);
+      }
+
+      this.cancelScaleDragRaf();
+      if (this.pendingPetScale != null) {
+        this.petScale = this.pendingPetScale;
+        this.pendingPetScale = null;
+      }
+
+      const changed = session.changed;
+      this.scaleSession = null;
+
+      if (!changed) {
+        return;
+      }
+
+      this.player?.setScale(this.petScale, true);
+
+      try {
+        await this.resizeWindow();
+        await savePetScale(this.petScale);
+      } catch (error) {
+        console.warn('Failed to save pet scale:', error);
+      }
+    };
+
+    this.scaleHandle.addEventListener('pointerdown', onScalePointerDown);
+    this.scaleHandle.addEventListener('pointermove', onScalePointerMove);
+    this.scaleHandle.addEventListener('pointerup', event => {
+      void finishScaleDrag(event);
+    });
+    this.scaleHandle.addEventListener('pointercancel', event => {
+      void finishScaleDrag(event);
+    });
+  }
+
   private bindEvents() {
     this.canvas.addEventListener('contextmenu', event => {
       event.preventDefault();
       this.showContextMenu(event.clientX, event.clientY);
+    });
+
+    this.canvasWrap.addEventListener('pointerenter', () => {
+      // Idle doesn't count as "normal playback"; when user hovers, give a short
+      // jumping greeting if nothing else is running.
+      if (this.busy) return;
+      if (this.currentState !== 'idle') return;
+      if (this.activePointerId !== null) return;
+      if (this.dragSession || this.scaleSession) return;
+
+      this.clearIdleTimer();
+      this.playProtocolCounted('jumping', HOVER_JUMP_CYCLES);
     });
 
     this.canvas.addEventListener('pointerdown', event => {
@@ -563,14 +767,14 @@ export class DesktopPet {
     this.canvas.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('mouseup', this.onWindowMouseUp, true);
 
-    document.addEventListener('click', event => {
-      if (
-        !(event.target instanceof Node) ||
-        !this.contextMenu.contains(event.target)
-      ) {
-        this.hideContextMenu();
-      }
-    });
+    // document.addEventListener('click', event => {
+    //   if (
+    //     !(event.target instanceof Node) ||
+    //     !this.contextMenu.contains(event.target)
+    //   ) {
+    //     this.hideContextMenu();
+    //   }
+    // });
 
     this.contextMenu
       .querySelector("[data-action='quit']")
@@ -701,10 +905,12 @@ export class DesktopPet {
     this.contextMenu.hidden = false;
     this.contextMenu.style.left = `${x}px`;
     this.contextMenu.style.top = `${y}px`;
+    void this.resizeWindow();
   }
 
   private hideContextMenu() {
     this.contextMenu.hidden = true;
+    void this.resizeWindow();
   }
 
   /** Handle `aipet://{key}?loop=&count=&default=` protocol requests. */
@@ -777,6 +983,7 @@ export class DesktopPet {
   ) {
     const { pet, spritesheet } = await loadPet(petId);
     this.pet = pet;
+    this.petScale = envPetScale(userEnv);
     this.titleEl.textContent = pet.manifest.displayName;
     document.title = pet.manifest.displayName;
 
@@ -785,12 +992,13 @@ export class DesktopPet {
       canvas: this.canvas,
       spritesheet,
       atlas: pet.atlas,
-      scale: 1,
+      scale: this.petScale,
       frameIntervalMs: animationTickMs,
       chromaKey: pet.manifest.chromaKey
     });
 
     this.bindEvents();
+    this.bindScaleHandle();
     await this.bindMoveListener();
     this.enterAutoPlay();
     await this.resizeWindow();
@@ -805,10 +1013,12 @@ export class DesktopPet {
   public destroy() {
     this.clearIdleTimer();
     this.stopDragReleasePoll();
+    this.cancelScaleDragRaf();
     this.protocolDefault = null;
     this.player?.dispose();
     this.player = null;
     this.dragSession = null;
+    this.scaleSession = null;
     this.pointerDown = null;
     this.activePointerId = null;
   }
