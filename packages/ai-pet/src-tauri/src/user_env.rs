@@ -11,19 +11,24 @@ const DEFAULT_ENV: &str = "\
 # Keys are loaded as environment-style variables.
 
 # PET                    Default pet id (loaded from ~/.ai-pet/pets/<id>, fallback public/default)
-PET=sugarwing
+PET=mochibot
 
-# AI_PET_ANIMATION_TICK  Frame interval in milliseconds for all animations
-AI_PET_ANIMATION_TICK=250
 
 # AI_PET_THEME            Theme: auto | light | dark (auto follows system)
 AI_PET_THEME=auto
 
-# AI_PET_DEBUG_PROTOCOL   Log received aipet:// URLs to devtools (true | 1)
-# AI_PET_DEBUG_PROTOCOL=false
+# AI_PET_SCALE            Pet display scale (0.5–2.0; text bubbles are not scaled)
+# AI_PET_SCALE=1
+
 
 # AI_PET_WINDOW_RIGHT     Screen X of window top-right corner (saved after drag)
 # AI_PET_WINDOW_TOP       Screen Y of window top edge (saved after drag)
+
+# AI_PET_ANIMATION_TICK  Frame interval in milliseconds for all animations
+AI_PET_ANIMATION_TICK=250
+
+# AI_PET_DEBUG_PROTOCOL   Log received aipet:// URLs to devtools (true | 1)
+# AI_PET_DEBUG_PROTOCOL=false
 ";
 
 pub fn ai_pet_dir(home: &Path) -> PathBuf {
@@ -175,9 +180,9 @@ mod tests {
     #[test]
     fn parses_comments_and_values() {
         let env = parse_env_content(
-            "# comment\nPET=sugarwing\nEMPTY=\nQUOTED=\"hello world\"\n",
+            "# comment\nPET=mochibot\nEMPTY=\nQUOTED=\"hello world\"\n",
         );
-        assert_eq!(env.get("PET"), Some(&"sugarwing".to_string()));
+        assert_eq!(env.get("PET"), Some(&"mochibot".to_string()));
         assert_eq!(env.get("EMPTY"), Some(&"".to_string()));
         assert_eq!(env.get("QUOTED"), Some(&"hello world".to_string()));
     }
@@ -197,7 +202,7 @@ mod tests {
         fs::create_dir_all(&ai_pet_dir).unwrap();
         fs::write(
             ai_pet_dir.join(".env"),
-            "# comment\nPET=sugarwing\nAI_PET_WINDOW_TOP=10\n",
+            "# comment\nPET=mochibot\nAI_PET_WINDOW_TOP=10\n",
         )
         .unwrap();
 
@@ -207,7 +212,7 @@ mod tests {
 
         let env = parse_env_content(&fs::read_to_string(ai_pet_dir.join(".env")).unwrap());
         assert_eq!(env.get("AI_PET_WINDOW_TOP"), Some(&"200".to_string()));
-        assert_eq!(env.get("PET"), Some(&"sugarwing".to_string()));
+        assert_eq!(env.get("PET"), Some(&"mochibot".to_string()));
 
         let _ = fs::remove_dir_all(&dir);
     }

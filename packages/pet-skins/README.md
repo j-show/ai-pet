@@ -24,6 +24,9 @@ pet-skins/
 ├── sugarwing/
 │   ├── pet.json
 │   └── spritesheet.webp
+├── mochibot/
+│   ├── pet.json
+│   └── spritesheet.webp
 └── test/
 ```
 

@@ -3,13 +3,19 @@
  * Interactive deploy: pick a pet-skins package, toggle install in ~/.ai-pet/pets.
  * Installs by copying packages/pet-skins/<petId>/ into ~/.ai-pet/pets/<petId>/.
  */
-import { access, cp, lstat, mkdir, rm, unlink } from 'node:fs/promises';
+import {
+  access,
+  cp,
+  lstat,
+  mkdir,
+  rm,
+  unlink,
+  readdir
+} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-
-import { listDeployablePets } from '../lib/list-pets.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** pet-skins package root (parent of scripts/). */
@@ -17,17 +23,30 @@ const PACKAGE_ROOT = path.resolve(__dirname, '..');
 /** AI Pet user pets directory; deploy copies packages here. */
 const PETS_DIR = path.join(os.homedir(), '.ai-pet', 'pets');
 
+const SKIP_DIRS = new Set(['scripts', 'node_modules', 'lib', 'test']);
+
 /**
- * @param {string} name Pet directory name.
- * @returns {Promise<boolean>}
+ * List deployable pet directories under the pet-skins package root.
+ * @param {string} packageRoot - Absolute path to `packages/pet-skins`.
+ * @returns {Promise<Array<{ name: string, sourceAbs: string }>>}
  */
-const isInstalled = async name => {
-  try {
-    await access(path.join(PETS_DIR, name));
-    return true;
-  } catch {
-    return false;
+const listDeployablePets = async packageRoot => {
+  const entries = await readdir(packageRoot, { withFileTypes: true });
+  const names = entries
+    .filter(entry => entry.isDirectory() && !SKIP_DIRS.has(entry.name))
+    .map(entry => entry.name)
+    .sort((a, b) => a.localeCompare(b));
+
+  const pets = [];
+  for (const name of names) {
+    const sourceAbs = path.resolve(packageRoot, name);
+    const sourcePet = path.join(sourceAbs, 'pet.json');
+    if (await access(sourcePet)) {
+      pets.push({ name, sourceAbs });
+    }
   }
+
+  return pets;
 };
 
 /**
@@ -64,7 +83,7 @@ const loadPets = async () => {
     deployable.map(async ({ name, sourceAbs }) => ({
       name,
       sourceAbs,
-      installed: await isInstalled(name)
+      installed: await access(path.join(PETS_DIR, name))
     }))
   );
 };

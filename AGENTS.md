@@ -82,7 +82,7 @@ After changes:
 | ------- | --- |
 | Protocol logs only in terminal | Logs are in **WebView DevTools** (`Ctrl+Shift+I`), not shell; enable `AI_PET_DEBUG_PROTOCOL=true` in `~/.ai-pet/.env` and restart app |
 | `pnpm pet:build` fails off Windows | `build` includes MSI/portable/export; use `cd packages/ai-pet && pnpm dev` on macOS/Linux |
-| `sync-pets` removed spritesheet | Source `pet-skins/sugarwing` may lack `spritesheet.webp`; merge copy preserves `public/default/` assets |
+| `sync-pets` removed spritesheet | Source `pet-skins/mochibot` may lack `spritesheet.webp`; merge copy preserves `public/default/` assets |
 | Drag end animation missing on Windows | Native drag blocks `mouseup`; app polls `is_primary_mouse_button_down` (Rust command) |
 | CI vs local lint mismatch | CI runs `pnpm lint` + `pnpm typecheck` from root—mirror before PR |
 

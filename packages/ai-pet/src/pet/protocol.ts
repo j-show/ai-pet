@@ -7,7 +7,12 @@ import type { PetState } from './types';
 
 export const AIPET_SCHEME = 'aipet:';
 
-const TEXT_ICON_VALUES = new Set<TextIcon>(['warn', 'error', 'info']);
+const TEXT_ICON_VALUES = new Set<TextIcon>([
+  'warn',
+  'error',
+  'info',
+  'loading'
+]);
 
 /** Protocol key → spritesheet animation state (excluding `base`). */
 const AIPET_KEY_TO_STATE: Record<string, PetState> = {

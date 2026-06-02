@@ -34,11 +34,8 @@ jobs:
           rm -rf ./.npmrc
           pnpm install
 
-      - name: Lint
-        run: pnpm run lint
-
-      - name: Typecheck
-        run: pnpm run typecheck
+      - name: Check
+        run: pnpm fix:all
 
       - name: Test
         run: pnpm run test

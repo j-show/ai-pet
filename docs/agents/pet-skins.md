@@ -36,7 +36,7 @@ cd packages/pet-skins && node --test test/**/*.test.mjs
 
 `packages/ai-pet/scripts/sync-pets.mjs` runs before `tauri dev` / `tauri build`:
 
-- Source: `../pet-skins/sugarwing`
+- Source: `../pet-skins/mochibot`
 - Target: `packages/ai-pet/public/default/`
 - **Merge copy** (does not delete existing files like committed `spritesheet.webp`)
 
