@@ -152,17 +152,25 @@ pnpm pet:open aipet://base
 
 | 参数   | 说明                                                          |
 | ------ | ------------------------------------------------------------- |
+| `sid`  | 会话 id；与 `sty` 同时存在时启用「回复」按钮                  |
+| `sty`  | 来源工具：`claude` \| `codex` \| `cursor` \| `qcode`（兼容旧参数 `stp`） |
 | `tl`   | 标题，单行省略；需 URL 编码                                   |
 | `icon` | `warn`（橙三角）\| `error`（红）\| `info`（蓝）\| `loading`（旋转圆环）；不传则不显示 |
 | `txt`  | 正文，最多 5 行省略；支持 `%0A` 换行                          |
 
-悬停文字框左上角出现 × 按钮可关闭。窗口以右上角为锚点扩展，避免宠物被裁切。
+悬停文字框左上角出现 × 可关闭；当 `sid` 与 `sty` 均有值时，右下角出现「回复」，点击后弹出悬浮输入框，发送后将文本提交到对应工具会话（`sid` 为 session id）。`qcode` 会写入 `~/.ai-pet/replies/inbox/`，可选在 `~/.ai-pet/.env` 配置 `AI_PET_REPLY_QCODE_CMD`（占位符 `{sid}`、`{inbox}`）。窗口以右上角为锚点扩展，避免宠物被裁切。
 
 ```bash
 pnpm pet:open aipet://text
 pnpm pet:open 'aipet://text?tl=标题&icon=info&txt=正文内容'
-pnpm pet:open 'aipet://text?icon=warn&txt=多行%0A文字'
-pnpm pet:open 'aipet://text?tl=确认任务&icon=loading&txt=处理中…'
+pnpm pet:open 'aipet://text?sid=039b1cab-...&sty=cursor&tl=标题&txt=正文'
+```
+
+## 测试
+
+```bash
+pnpm -F ai-pet test          # 协议解析单测（node:test + tsx）
+cd packages/ai-pet/src-tauri && cargo test
 ```
 
 ## 构建
@@ -201,10 +209,11 @@ ai-pet/
 │   ├── sync-version.mjs  # package.json → Cargo / tauri conf
 │   ├── export-dist.mjs   # 构建产物 → 仓库根 dist/
 │   └── aipet-open.mjs    # 协议调试
+├── test/                 # node:test 协议单测
 ├── src/
-│   ├── config/user-env.ts
+│   ├── config/           # user-env、tool-reply、text-payload
 │   └── pet/              # 加载、动画、协议、文字框
 └── src-tauri/
-    ├── icons/            # icon-source.png → icon.icns / icon.ico
+    ├── tool_reply.rs     # 回复投递（CLI + inbox）
     └── ...               # Rust 后端与打包配置
 ```

@@ -2,7 +2,8 @@ import {
   DEFAULT_TEXT_SID,
   type AipetTextMessage,
   type TextIcon
-} from './text-bubble';
+} from './text-message';
+import { parseTextSource, type TextReplyTarget } from './text-source';
 import type { PetState } from './types';
 
 export const AIPET_SCHEME = 'aipet:';
@@ -159,7 +160,19 @@ const parseTextSid = (raw: string | null): string => {
   return sid || DEFAULT_TEXT_SID;
 };
 
-/** Parse `aipet://text`, `aipet://text?sid=`, or `aipet://text?sid=&tl=&icon=&txt=`. */
+const parseTextReplyTarget = (parsed: URL): TextReplyTarget | undefined => {
+  const sid = parsed.searchParams.get('sid')?.trim() ?? '';
+  if (!sid) return void 0;
+
+  const sty = parseTextSource(
+    parsed.searchParams.get('sty') ?? parsed.searchParams.get('stp')
+  );
+  if (!sty) return void 0;
+
+  return { sty, sid };
+};
+
+/** Parse `aipet://text`, `aipet://text?sid=`, or `aipet://text?sid=&sty=&tl=&icon=&txt=`. */
 export const parseAipetTextAction = (url: string): AipetTextAction | null => {
   if (parseAipetKey(url) !== 'text') return null;
 
@@ -182,6 +195,7 @@ export const parseAipetTextAction = (url: string): AipetTextAction | null => {
       type: 'show',
       message: {
         sid,
+        reply: parseTextReplyTarget(parsed),
         title: title || void 0,
         icon: parseTextIcon(iconParam),
         text

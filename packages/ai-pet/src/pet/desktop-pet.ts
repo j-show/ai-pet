@@ -963,6 +963,7 @@ export class DesktopPet {
     const fromFile = await loadTextPayload(message.sid);
     const enriched: AipetTextMessage = {
       sid: message.sid,
+      reply: message.reply,
       title: message.title || fromFile?.title || void 0,
       text: fromFile?.text || message.text || '',
       icon: message.icon ?? null

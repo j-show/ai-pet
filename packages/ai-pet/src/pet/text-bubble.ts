@@ -1,12 +1,10 @@
-export type TextIcon = 'warn' | 'error' | 'info' | 'loading';
+import { sendToolReply } from '../config/tool-reply';
 
-export interface AipetTextMessage {
-  /** Session id; same sid updates in place, different sids stack vertically. */
-  sid: string;
-  title?: string;
-  text: string;
-  icon: TextIcon | null;
-}
+import type { AipetTextMessage, TextIcon } from './text-message';
+import type { TextReplyTarget, TextSource } from './text-source';
+
+export type { AipetTextMessage, TextIcon, TextReplyTarget, TextSource };
+export { DEFAULT_TEXT_SID } from './text-message';
 
 export interface TextBubbleAnchor {
   x: number;
@@ -26,7 +24,6 @@ export interface TextBubbleBox {
 export const BUBBLE_ANCHOR_X_RATIO = 0.7;
 /** Lower-middle area of the pet sprite (feet/belly region). */
 export const BUBBLE_ANCHOR_Y_RATIO = 1;
-export const DEFAULT_TEXT_SID = 'default';
 const BUBBLE_STACK_GAP_PX = 8;
 
 const ICON_LABELS: Record<Exclude<TextIcon, 'loading'>, string> = {
@@ -45,21 +42,32 @@ export const bubbleAnchorForPet = (
   };
 };
 
+const SEND_ARROW_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z" transform="rotate(-90 12 12)"></path></svg>`;
+
 /** One speech bubble DOM subtree. */
 class TextBubbleItem {
   private readonly closeEl: HTMLButtonElement;
+  private readonly replyEl: HTMLButtonElement;
   private readonly headerEl: HTMLElement;
   private readonly titleEl: HTMLElement;
   private readonly iconEl: HTMLElement;
   private readonly contentEl: HTMLElement;
   private visible = false;
+  private replyTarget: TextReplyTarget | null = null;
 
   constructor(
     public readonly root: HTMLElement,
-    onDismiss: () => void
+    onDismiss: () => void,
+    private readonly onReplyClick: (
+      anchor: HTMLElement,
+      target: TextReplyTarget
+    ) => void
   ) {
     this.closeEl = root.querySelector(
       '.text-bubble__close'
+    ) as HTMLButtonElement;
+    this.replyEl = root.querySelector(
+      '.text-bubble__reply'
     ) as HTMLButtonElement;
     this.headerEl = root.querySelector('.text-bubble__header') as HTMLElement;
     this.titleEl = root.querySelector('.text-bubble__title') as HTMLElement;
@@ -69,6 +77,12 @@ class TextBubbleItem {
     this.closeEl.addEventListener('click', event => {
       event.stopPropagation();
       onDismiss();
+    });
+
+    this.replyEl.addEventListener('click', event => {
+      event.stopPropagation();
+      if (!this.replyTarget) return;
+      this.onReplyClick(this.root, this.replyTarget);
     });
   }
 
@@ -134,6 +148,13 @@ class TextBubbleItem {
       Boolean(title && !text)
     );
 
+    this.replyTarget = message.reply ?? null;
+    this.root.classList.toggle(
+      'text-bubble--replyable',
+      Boolean(this.replyTarget)
+    );
+    this.replyEl.hidden = !this.replyTarget;
+
     this.root.hidden = false;
     this.closeEl.hidden = false;
     this.visible = true;
@@ -162,6 +183,9 @@ class TextBubbleItem {
     this.iconEl.setAttribute('aria-hidden', 'true');
     this.iconEl.removeAttribute('role');
     this.iconEl.removeAttribute('aria-label');
+    this.replyTarget = null;
+    this.replyEl.hidden = true;
+    this.root.classList.remove('text-bubble--replyable');
   }
 
   public layoutAt(anchorX: number, topY: number) {
@@ -201,19 +225,123 @@ const createTextBubbleElement = (sid: string): HTMLElement => {
       <span class="text-bubble__icon" hidden aria-hidden="true"></span>
     </div>
     <p class="text-bubble__content" hidden></p>
+    <button type="button" class="text-bubble__reply" hidden>回复</button>
   `;
   return root;
 };
+
+class TextBubbleComposer {
+  private readonly inputEl: HTMLTextAreaElement;
+  private readonly sendEl: HTMLButtonElement;
+  private target: TextReplyTarget | null = null;
+  private sending = false;
+
+  constructor(protected readonly root: HTMLElement) {
+    this.inputEl = root.querySelector(
+      '.text-bubble-composer__input'
+    ) as HTMLTextAreaElement;
+    this.sendEl = root.querySelector(
+      '.text-bubble-composer__send'
+    ) as HTMLButtonElement;
+
+    this.sendEl.addEventListener('click', () => {
+      void this.submit();
+    });
+
+    this.inputEl.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        void this.submit();
+      }
+      if (event.key === 'Escape') {
+        this.close();
+      }
+    });
+
+    document.addEventListener('pointerdown', event => {
+      if (this.root.hidden) return;
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (this.root.contains(target)) return;
+      if (
+        target instanceof Element &&
+        target.closest('.text-bubble__reply, .text-bubble')
+      ) {
+        return;
+      }
+      this.close();
+    });
+  }
+
+  public open(anchor: HTMLElement, target: TextReplyTarget) {
+    this.target = target;
+    this.inputEl.value = '';
+    this.sendEl.disabled = false;
+    this.root.hidden = false;
+
+    const rect = anchor.getBoundingClientRect();
+    this.root.style.left = `${Math.max(8, rect.right - 220)}px`;
+    this.root.style.top = `${rect.bottom + 6}px`;
+
+    this.inputEl.focus();
+  }
+
+  public close() {
+    this.target = null;
+    this.root.hidden = true;
+    this.inputEl.value = '';
+  }
+
+  public isOpenFor(target: TextReplyTarget) {
+    return (
+      !this.root.hidden &&
+      this.target?.sid === target.sid &&
+      this.target?.sty === target.sty
+    );
+  }
+
+  private async submit() {
+    if (this.sending || !this.target) return;
+
+    const text = this.inputEl.value.trim();
+    if (!text) return;
+
+    this.sending = true;
+    this.sendEl.disabled = true;
+
+    try {
+      await sendToolReply(this.target.sty, this.target.sid, text);
+      this.close();
+    } catch (error) {
+      console.warn('[ai-pet] tool reply failed:', error);
+      this.sendEl.disabled = false;
+    } finally {
+      this.sending = false;
+    }
+  }
+}
 
 /** Multiple speech bubbles stacked downward; same sid replaces content in place. */
 export class TextBubbleStack {
   private readonly entries = new Map<string, TextBubbleItem>();
   private readonly order: string[] = [];
+  private readonly composer: TextBubbleComposer;
 
   constructor(
     private readonly container: HTMLElement,
     private readonly onDismiss?: () => void
-  ) {}
+  ) {
+    const composerRoot = document.createElement('div');
+    composerRoot.className = 'text-bubble-composer';
+    composerRoot.hidden = true;
+    composerRoot.innerHTML = `
+      <textarea class="text-bubble-composer__input" rows="2" placeholder="回复" aria-label="回复内容"></textarea>
+      <button type="button" class="text-bubble-composer__send" aria-label="发送">${SEND_ARROW_SVG}</button>
+    `;
+    const mount = container.parentElement ?? document.body;
+    mount.appendChild(composerRoot);
+    this.composer = new TextBubbleComposer(composerRoot);
+  }
 
   private removeEntry(sid: string) {
     const item = this.entries.get(sid);
@@ -244,9 +372,19 @@ export class TextBubbleStack {
     if (!item) {
       const root = createTextBubbleElement(sid);
       this.container.appendChild(root);
-      item = new TextBubbleItem(root, () => {
-        this.dismiss(sid);
-      });
+      item = new TextBubbleItem(
+        root,
+        () => {
+          this.dismiss(sid);
+        },
+        (anchor, replyTarget) => {
+          if (this.composer.isOpenFor(replyTarget)) {
+            this.composer.close();
+            return;
+          }
+          this.composer.open(anchor, replyTarget);
+        }
+      );
       this.entries.set(sid, item);
       this.order.push(sid);
     }

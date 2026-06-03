@@ -1,6 +1,6 @@
 {
   "name": "ai-pet-monorepo",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "AI Pet monorepo",
@@ -12,6 +12,7 @@
     "deploy": "pnpm -F pet-skins deploy",
     "pet:open": "pnpm -F ai-pet open",
     "pet:sync": "pnpm -F ai-pet sync-version",
+    "pet:tag": "pnpm -F ai-pet tag-version",
     "pet:dev": "pnpm -F ai-pet dev",
     "build:mac": "pnpm -F ai-pet build:mac",
     "build:win": "pnpm -F ai-pet build:win",

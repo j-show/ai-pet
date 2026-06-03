@@ -23,7 +23,7 @@ pnpm install
 | `pnpm pet:open` | 通过开发桥或系统处理打开 `aipet://` |
 | `pnpm lint` / `pnpm fix:eslint` | ESLint（含自动修复） |
 | `pnpm typecheck` | TypeScript 类型检查（`packages/ai-pet`） |
-| `pnpm test` | `pet-skins` 单元测试 |
+| `pnpm test` | 工作区单测（`ai-pet` 协议 + `pet-skins`） |
 
 `deploy`：`↑`/`↓` 切换、`Enter` 安装/卸载（`*` 已安装）、`Ctrl+C` 退出。
 

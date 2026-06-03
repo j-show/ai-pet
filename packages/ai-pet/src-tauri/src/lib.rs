@@ -2,6 +2,7 @@ mod deep_link_argv;
 mod macos_compositor;
 mod pet_store;
 mod text_payload;
+mod tool_reply;
 mod user_env;
 
 use std::collections::HashMap;
@@ -39,6 +40,17 @@ fn read_text_payload(
 ) -> Result<Option<text_payload::TextPayload>, String> {
     let home = app.path().home_dir().map_err(|error| error.to_string())?;
     text_payload::read_text_payload(&home, &sid)
+}
+
+#[tauri::command]
+fn send_tool_reply(
+    app: tauri::AppHandle,
+    sty: String,
+    sid: String,
+    text: String,
+) -> Result<(), String> {
+    let home = app.path().home_dir().map_err(|error| error.to_string())?;
+    tool_reply::send_tool_reply(&home, &sty, &sid, &text)
 }
 
 /// Startup / secondary-instance deep links with `cmd`-split query fragments merged.
@@ -97,6 +109,7 @@ pub fn run() {
             save_user_env,
             resolve_user_pet,
             read_text_payload,
+            send_tool_reply,
             collect_deep_link_urls,
             invalidate_transparent_window,
             is_primary_mouse_button_down,

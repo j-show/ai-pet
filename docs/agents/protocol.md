@@ -17,7 +17,7 @@ Load when editing `src/pet/protocol.ts`, `protocol-handler.ts`, text bubbles, or
 | `aipet://text?sid=X` | Dismiss session `X` only |
 | `aipet://text?sid=X&tl=&txt=&icon=` | Show/update; same `sid` replaces, different `sid` stacks downward |
 
-Params: `tl` (title), `txt` (body, `%0A` newlines), `icon` = `warn` \| `error` \| `info` \| `loading`. Default `sid` = `default` if omitted.
+Params: `tl` (title), `txt` (body, `%0A` newlines), `icon` = `warn` \| `error` \| `info` \| `loading`, `sty` = `claude` \| `codex` \| `cursor` \| `qcode` (alias `stp`). Default `sid` = `default` if omitted. Reply UI requires **both** non-empty URL `sid` and valid `sty`.
 
 ## Animation (`aipet://{key}`)
 
@@ -59,6 +59,17 @@ start "" "aipet://text?tl=a&txt=b&sid=1"
 Prefer `pnpm pet:open` (passes the URL as one argument). For long bodies, write `~/.ai-pet/messages/<sid>.json` and open `aipet://text?sid=<sid>` only.
 
 Dev: hits Vite `POST /__aipet/protocol?url=…` then HMR event `aipet-protocol`. Production: OS handler + single-instance forward.
+
+### Reply (`sty` + hover 回复)
+
+When both non-empty URL `sid` and valid `sty` are present, the bubble shows a hover **回复** button. Submitting sends user text via `send_tool_reply`:
+
+| `sty` | Delivery |
+| --- | --- |
+| `claude` | `claude --resume <sid> --print …` |
+| `codex` | `codex resume <sid> …` |
+| `cursor` | `cursor agent --resume <sid> --print --trust …` |
+| `qcode` | JSON under `~/.ai-pet/replies/inbox/`; optional `AI_PET_REPLY_QCODE_CMD` in `~/.ai-pet/.env` with `{sid}` and `{inbox}` |
 
 ## SSOT
 
