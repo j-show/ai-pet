@@ -64,15 +64,15 @@ jobs:
           VERSION="${GITHUB_REF_NAME}"
 
           # DMG
-          DMG=$(find packages/ai-pet/src-tauri/target -path "*/release/bundle/dmg/*.dmg" -type f | head -1 || true)
+          DMG=$(find src-tauri/target -path "*/release/bundle/dmg/*.dmg" -type f | head -1 || true)
           if [ -z "$DMG" ]; then
-            echo "❌ No .dmg found under packages/ai-pet/src-tauri/target/**/release/bundle/dmg/" >&2
+            echo "❌ No .dmg found under src-tauri/target/**/release/bundle/dmg/" >&2
             exit 1
           fi
           cp "$DMG" "release-assets/AI-Pet-${VERSION}-macOS.dmg"
 
           # Optional: zip .app for convenience
-          APP=$(find packages/ai-pet/src-tauri/target -path "*/release/bundle/macos/*.app" -type d | head -1 || true)
+          APP=$(find src-tauri/target -path "*/release/bundle/macos/*.app" -type d | head -1 || true)
           if [ -n "$APP" ]; then
             ditto -c -k --sequesterRsrc --keepParent "$APP" "release-assets/AI-Pet-${VERSION}-macOS.app.zip"
           fi
@@ -86,16 +86,16 @@ jobs:
           $version = $env:GITHUB_REF_NAME
 
           # MSI installer
-          $msi = Get-ChildItem -Path 'packages/ai-pet/src-tauri/target' -Recurse -Include *.msi -ErrorAction SilentlyContinue |
+          $msi = Get-ChildItem -Path 'src-tauri/target' -Recurse -Include *.msi -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\release\\bundle\\msi\\' } |
             Select-Object -First 1
           if ($null -eq $msi) {
-            throw "No .msi found under packages/ai-pet/src-tauri/target/**/release/bundle/msi/"
+            throw "No .msi found under src-tauri/target/**/release/bundle/msi/"
           }
           Copy-Item $msi.FullName (Join-Path release-assets ("AI-Pet-$version-Windows.msi"))
 
           # Portable exe (built with --no-bundle)
-          $exe = Get-ChildItem -Path 'packages/ai-pet/src-tauri/target' -Recurse -Include *.exe -ErrorAction SilentlyContinue |
+          $exe = Get-ChildItem -Path 'src-tauri/target' -Recurse -Include *.exe -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match '\\release\\' -and $_.FullName -notmatch '\\bundle\\' } |
             Sort-Object LastWriteTime -Descending |
             Select-Object -First 1

@@ -1,0 +1,94 @@
+:root {
+  color-scheme: only light;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+
+  --bubble-bg: #ffffff;
+  --bubble-border: rgba(15, 23, 42, 0.08);
+  --bubble-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --bubble-title: #111827;
+  --bubble-content: #111827;
+  --bubble-icon-error-fg: #991b1b;
+  --bubble-icon-error-bg: #fee2e2;
+  --bubble-icon-loading: #1f2937;
+
+  --menu-bg: #ffffff;
+  --menu-border: rgba(15, 23, 42, 0.08);
+  --menu-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --menu-text: #111827;
+  --menu-hover: rgba(15, 23, 42, 0.06);
+
+  --bubble-close-bg: #ffffff;
+  --bubble-close-fg: #6b7280;
+  --bubble-close-border: rgba(15, 23, 42, 0.12);
+  --bubble-close-hover-fg: #dc2626;
+  --bubble-close-hover-bg: #fee2e2;
+  --bubble-close-hover-border: #f87171;
+  --bubble-close-hover-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+
+  --bubble-reply-hover-fg: #334155;
+  --bubble-reply-hover-bg: rgba(255, 255, 255, 0.92);
+  --bubble-reply-hover-border: rgba(15, 23, 42, 0.12);
+  --bubble-reply-hover-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+
+  --scale-handle-fg: #334155;
+  --scale-handle-bg: rgba(255, 255, 255, 0.92);
+  --scale-handle-border: rgba(15, 23, 42, 0.12);
+  --scale-handle-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: only dark;
+
+  --bubble-bg: #1e293b;
+  --bubble-border: rgba(148, 163, 184, 0.18);
+  --bubble-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  --bubble-title: #f1f5f9;
+  --bubble-content: #94a3b8;
+  --bubble-icon-error-fg: #fecaca;
+  --bubble-icon-error-bg: #7f1d1d;
+  --bubble-icon-loading: #e2e8f0;
+
+  --menu-bg: #1e293b;
+  --menu-border: rgba(148, 163, 184, 0.18);
+  --menu-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --menu-text: #f1f5f9;
+  --menu-hover: rgba(148, 163, 184, 0.16);
+
+  --bubble-close-bg: #334155;
+  --bubble-close-fg: #cbd5e1;
+  --bubble-close-border: rgba(148, 163, 184, 0.24);
+  --bubble-close-hover-bg: #7f1d1d;
+  --bubble-close-hover-fg: #fecaca;
+  --bubble-close-hover-border: #f87171;
+  --bubble-close-hover-shadow: 0 2px 10px rgba(248, 113, 113, 0.45);
+
+  --scale-handle-fg: #e2e8f0;
+  --scale-handle-bg: rgba(30, 41, 59, 0.92);
+  --scale-handle-border: rgba(148, 163, 184, 0.28);
+  --scale-handle-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

@@ -1,53 +1,29 @@
-# Tauri desktop (`packages/ai-pet`)
-
-Load when editing `src-tauri/`, Tauri config, or window/drag behavior.
+# Tauri desktop (repo root)
 
 ## Stack
 
-- Tauri **2**, `tauri-plugin-deep-link`, `tauri-plugin-single-instance` (with `deep-link` feature)
-- Window: transparent, frameless, always-on-top; macOS uses `ActivationPolicy::Accessory`
-- Frontend built with Vite → `../dist`; dev URL `http://localhost:1420`
+- **Frontend**: Vue 3 + Vite (`src/`), dev port **1420**
+- **Backend**: Rust in `src-tauri/`
+- **Config**: `src-tauri/tauri.conf.json` — `beforeDevCommand` / `beforeBuildCommand` run from repo root (paths like `scripts/sync-pets.mjs`, `vite`)
 
-## Commands (`packages/ai-pet`)
+## Commands (repo root)
 
 ```bash
-pnpm dev                    # tauri dev (runs sync-pets + vite)
-pnpm build                  # build:msi && build:portable:win && export
-pnpm build:msi              # tauri build (installers)
-pnpm build:portable:win     # tauri build --no-bundle --config src-tauri/tauri.portable.conf.json
-pnpm export                 # copy exe + bundle → repo root dist/
-pnpm clean                  # remove dist, src-tauri/target, src-tauri/gen
-pnpm sync-pets              # merge pet-skins/mochibot → public/default/
-pnpm sync-version           # package.json version → Cargo.toml + tauri conf
-cargo test                  # from src-tauri/
+pnpm dev
+pnpm build:app
+pnpm sync-pets
+pnpm sync-version
 ```
 
-Root shortcuts: `pnpm pet:dev`, `pnpm pet:build`, `pnpm pet:sync`.
+## Window
 
-## Key paths
+- Transparent, undecorated, always on top
+- Resizes with pet + text bubbles; anchor top-right when growing
+- Position persisted: `AI_PET_WINDOW_RIGHT`, `AI_PET_WINDOW_TOP` in `~/.ai-pet/.env`
 
-| Path | Role |
-| ---- | ---- |
-| `src-tauri/src/lib.rs` | Plugins, commands, setup |
-| `src-tauri/src/pet_store.rs` | Load `~/.ai-pet/pets/<id>`, path checks |
-| `src-tauri/src/user_env.rs` | Parse/merge `~/.ai-pet/.env` |
-| `src-tauri/tauri.conf.json` | Main bundle (app/dmg/msi) |
-| `src-tauri/tauri.portable.conf.json` | Portable build overlay (`bundle.active: false`) |
-| `src/pet/desktop-pet.ts` | Drag, animations, text stack, window resize |
-| `src/config/window-position.ts` | Save/restore position (top-right anchor) |
+## Drag (Windows)
 
-## Window position
-
-Saved to `~/.ai-pet/.env` after drag ends:
-
-- `AI_PET_WINDOW_RIGHT` — screen X of outer frame **top-right**
-- `AI_PET_WINDOW_TOP` — screen Y of outer frame top
-
-Restore on startup after `resizeWindow()`. Resize keeps top-right fixed when bubbles change size.
-
-## Windows drag
-
-`startDragging()` blocks normal `mouseup`. Release detected via Rust command `is_primary_mouse_button_down` (poll in `desktop-pet.ts`).
+Native drag may not deliver `mouseup` to WebView; release polling via Rust `is_primary_mouse_button_down`.
 
 ## Single instance
 
@@ -55,5 +31,5 @@ Second `aipet://` launch routes to existing instance (`tauri-plugin-single-insta
 
 ## SSOT
 
-- [packages/ai-pet/README.md](../../packages/ai-pet/README.md) — build and interaction
+- [README_CN.md](../../README_CN.md) — build and interaction
 - [Tauri v2](https://v2.tauri.app/)

@@ -1,39 +1,68 @@
 {
-  "name": "ai-pet-monorepo",
+  "name": "ai-pet",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "AI Pet monorepo",
+  "description": "Tauri desktop AI Pet",
+  "author": {
+    "name": "jShow",
+    "email": "dev@jshow.org"
+  },
+  "homepage": "https://github.com/j-show/ai-pet",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/j-show/ai-pet.git"
+  },
+  "license": "MIT",
   "scripts": {
     "prepare": "husky",
-    "fix:all": "pnpm fix:prettier && pnpm fix:eslint",
-    "fix:prettier": "prettier --config ./.prettierrc --write .",
-    "fix:eslint": "eslint --config ./eslint.config.js --fix --quiet --no-warn-ignored .",
-    "deploy": "pnpm -F pet-skins deploy",
-    "pet:open": "pnpm -F ai-pet open",
-    "pet:sync": "pnpm -F ai-pet sync-version",
-    "pet:tag": "pnpm -F ai-pet tag-version",
-    "pet:dev": "pnpm -F ai-pet dev",
-    "build:mac": "pnpm -F ai-pet build:mac",
-    "build:win": "pnpm -F ai-pet build:win",
-    "test": "pnpm -r test"
+    "fix:all": "pnpm prettier && pnpm lint && pnpm typecheck",
+    "prettier": "prettier --config ./.prettierrc --write .",
+    "lint": "eslint --config ./eslint.config.js --quiet --no-warn-ignored .",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "deploy": "node scripts/deploy_skin.mjs",
+    "dev": "tauri dev",
+    "open": "node scripts/aipet-open.mjs",
+    "sync:version": "node scripts/sync-version.mjs",
+    "sync:pets": "node scripts/sync-pets.mjs",
+    "tag:version": "node scripts/tag-version.mjs",
+    "clean": "node scripts/clean.mjs",
+    "icon": "node scripts/prepare-icon-source.mjs && tauri icon src-tauri/icons/icon-source.png -o src-tauri/icons",
+    "build": "vite build",
+    "build:mac": "pnpm build:app",
+    "build:win": "pnpm build:app && pnpm build:portable",
+    "build:app": "tauri build",
+    "build:portable": "tauri build --no-bundle --config src-tauri/tauri.portable.conf.json"
   },
   "engines": {
     "node": ">=22"
   },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-deep-link": "^2",
+    "vue": "^3.5.13"
+  },
   "devDependencies": {
+    "@tauri-apps/cli": "^2",
     "@types/node": "^25.9.1",
+    "@vitejs/plugin-vue": "^5",
     "eslint": "^9",
     "eslint-config-jshow": "^1.0.16",
     "eslint-config-prettier": "latest",
     "eslint-plugin-jshow": "^1.0.15",
     "eslint-plugin-prettier": "latest",
+    "eslint-plugin-vue": "latest",
     "husky": "latest",
+    "less": "^4.3.0",
     "lint-staged": "latest",
+    "pngjs": "^7.0.0",
     "prettier": ">=3",
     "typescript": "^5",
     "typescript-eslint": "^8",
-    "eslint-plugin-vue": "^10.9.1",
-    "vue-eslint-parser": "^10.4.0"
+    "vite": "^7",
+    "vitest": "^4",
+    "vue-eslint-parser": "^10",
+    "vue-tsc": "^3.1.5"
   }
 }

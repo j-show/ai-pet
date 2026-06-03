@@ -1,12 +1,13 @@
 # AI Pet
 
-Monorepo for a Tauri desktop pet and a Codex skin deploy CLI.
+Tauri 2 desktop pet with Vue 3 frontend and optional Codex-style skin packages.
 
 [中文说明](README_CN.md)
 
 ## Requirements
 
-- Node.js **≥ 22** (`package.json` `engines`)
+- Node.js **≥ 22**
+- Rust toolchain (Tauri)
 - Interactive terminal for `pnpm deploy` (TTY)
 
 ## Install & scripts
@@ -17,25 +18,24 @@ pnpm install
 
 | Script | Description |
 | --- | --- |
-| `pnpm deploy` | Interactive copy from `packages/pet-skins/` to `~/.ai-pet/pets` |
-| `pnpm pet:dev` | Run AI Pet (Tauri dev) |
-| `pnpm pet:build` | Build AI Pet |
-| `pnpm pet:open` | Open `aipet://` URL via dev bridge or OS handler |
-| `pnpm lint` / `pnpm fix:eslint` | ESLint (with fix) |
-| `pnpm typecheck` | TypeScript check for `packages/ai-pet` |
-| `pnpm test` | `pet-skins` unit tests |
+| `pnpm dev` | Tauri dev (Vite on port 1420) |
+| `pnpm open aipet://…` | Open protocol URL (dev bridge or OS handler) |
+| `pnpm build:app` / `pnpm build:mac` / `pnpm build:win` | Tauri bundles |
+| `pnpm deploy` | Interactive install from `pet-skins/` to `~/.ai-pet/pets` |
+| `pnpm lint` / `pnpm fix:eslint` | ESLint |
+| `pnpm typecheck` | `vue-tsc --noEmit` |
+| `pnpm test` | Vitest (protocol parsing) |
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `packages/ai-pet/` | Tauri desktop app |
-| `packages/pet-skins/<petId>/` | Deployable Codex pet packages |
-| `packages/pet-skins/scripts/deploy.mjs` | Interactive install/uninstall CLI |
+| `src/` | Vue UI + pet runtime (TypeScript) |
+| `src-tauri/` | Rust backend and Tauri config |
+| `scripts/` | sync-pets, open URL, version sync |
+| `pet-skins/<petId>/` | Deployable pet packages (`pet.json` + spritesheet) |
+| `public/default/` | Bundled default pet (mochibot) |
 
-See [README_CN.md](README_CN.md) for `pet.json` fields, `runs/` pipeline notes, and adding new pets.
+Full protocol, env vars, and interaction details: [README_CN.md](README_CN.md).
 
-## Packages
-
-- [`packages/ai-pet/README.md`](packages/ai-pet/README.md) — desktop app, protocol, env
-- [`packages/pet-skins/README.md`](packages/pet-skins/README.md) — skin packages & deploy
+Agent docs: [AGENTS.md](AGENTS.md), [docs/agents/](docs/agents/).

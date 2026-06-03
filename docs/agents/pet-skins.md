@@ -1,56 +1,50 @@
-# Pet skins (`packages/pet-skins`)
-
-Load when editing skin packages, `deploy.mjs`, or `lib/list-pets.mjs`.
+# Pet skins (`pet-skins/`)
 
 ## Layout
 
 ```
 pet-skins/
-├── lib/list-pets.mjs      # discover dirs with pet.json
-├── scripts/deploy.mjs     # TTY install/uninstall
-├── <petId>/
+├── mochibot/
 │   ├── pet.json
-│   └── spritesheet.webp   # may be gitignored; bundled copy in ai-pet/public/default/
-└── test/
+│   └── spritesheet.webp
+└── sugarwing/
+    ├── pet.json
+    └── spritesheet.webp
+
+scripts/
+└── deploy_skin.mjs   # interactive deploy CLI (repo root)
 ```
 
-## Deploy
+## Deploy CLI
 
 ```bash
-pnpm deploy              # from repo root
-# or cd packages/pet-skins && pnpm deploy
+pnpm deploy
+# or: node scripts/deploy_skin.mjs
 ```
 
-Copies package → `~/.ai-pet/pets/<petId>/` (must match desktop app loader).
-
-Requires **interactive TTY** (`↑`/`↓`, `Enter`, `Ctrl+C`).
+Interactive TTY: pick a package, toggle install into `~/.ai-pet/pets/<petId>/` (full directory copy).
 
 ## Tests
 
-```bash
-pnpm test                # root: pet-skins only
-cd packages/pet-skins && node --test test/**/*.test.mjs
-```
+Root `pnpm test` runs Vitest protocol tests in `test/` (not under `pet-skins/`).
 
-## Sync into desktop app
+## Sync into app bundle
 
-`packages/ai-pet/scripts/sync-pets.mjs` runs before `tauri dev` / `tauri build`:
+`scripts/sync-pets.mjs` runs before `tauri dev` / `tauri build`:
 
-- Source: `../pet-skins/mochibot`
-- Target: `packages/ai-pet/public/default/`
-- **Merge copy** (does not delete existing files like committed `spritesheet.webp`)
+- Source: `pet-skins/mochibot`
+- Target: `public/default/` (merge copy)
 
-## pet.json (minimal)
+## `pet.json` (minimal)
 
-| Field | Notes |
-| ----- | ----- |
-| `id` | Matches directory name |
+| Field | Role |
+| ----- | ---- |
+| `id` | Pet id (directory name) |
 | `displayName`, `description` | Metadata |
 | `spritesheetPath` | Relative path inside package |
 
-Optional atlas/animations: see root README_CN and `packages/ai-pet/src/constants/pet.ts`.
+Optional atlas/animations: see `src/constants/pet.ts`.
 
 ## SSOT
 
-- [packages/pet-skins/README.md](../../packages/pet-skins/README.md)
-- [README_CN.md](../../README_CN.md) — field details
+- [README_CN.md](../../README_CN.md)

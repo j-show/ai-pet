@@ -1,8 +1,0 @@
-{
-  "name": "pet-skins",
-  "version": "1.0.0",
-  "description": "AI Pet skins",
-  "scripts": {
-    "deploy": "node scripts/deploy.mjs"
-  }
-}

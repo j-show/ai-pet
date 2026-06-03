@@ -1,76 +1,44 @@
 # `aipet://` protocol
 
-Load when editing `src/pet/protocol.ts`, `protocol-handler.ts`, text bubbles, or `scripts/aipet-open.mjs`.
+## Flow
 
-## Dispatch flow
-
-1. Deep link / dev bridge → `handleAipetUrls` in `protocol-handler.ts`
-2. Text → `parseAipetTextAction` → `TextBubbleStack` (multi-`sid`)
-3. Animations → `parseAipetCommand` → `DesktopPet.playProtocolAnimation`
+1. OS / dev bridge delivers URL
+2. `protocol-handler.ts` → `parseAipetTextAction` / `parseAipetCommand`
+3. `DesktopPet` show/dismiss text, play animation, or `enterAutoPlay()`
 4. `aipet://base` → `enterAutoPlay()`
 
 ## Text (`aipet://text`)
 
-| URL | Behavior |
-| --- | -------- |
+| URL | Effect |
+| --- | --- |
 | `aipet://text` | Dismiss **all** bubbles |
 | `aipet://text?sid=X` | Dismiss session `X` only |
 | `aipet://text?sid=X&tl=&txt=&icon=` | Show/update; same `sid` replaces, different `sid` stacks downward |
 
-Params: `tl` (title), `txt` (body, `%0A` newlines), `icon` = `warn` \| `error` \| `info` \| `loading`, `sty` = `claude` \| `codex` \| `cursor` \| `qcode` (alias `stp`). Default `sid` = `default` if omitted. Reply UI requires **both** non-empty URL `sid` and valid `sty`.
-
 ## Animation (`aipet://{key}`)
 
-Keys: `waving`, `jumping`, `failed`, `waiting`, `running` (`runing` alias), `review`, `base`.
-
-Query: `loop`, `count`, `default=true` (see `packages/ai-pet/README.md`).
+Query: `loop`, `count`, `default=true` (see [README_CN.md](../../README_CN.md)).
 
 ## Debug
 
-Enable logging of raw URL + parsed payload:
+`AI_PET_DEBUG_PROTOCOL=true` in `~/.ai-pet/.env` or `?debug=protocol` in dev URL.
 
-- `~/.ai-pet/.env`: `AI_PET_DEBUG_PROTOCOL=true` (restart app)
-- Dev URL: `?debug=protocol`
-- Opens DevTools when enabled (Rust `open_devtools`); also shows on-screen log panel (`#protocol-debug-log`)
-
-**Not** visible in terminal where `pnpm pet:open` runs—use WebView console or overlay.
-
-## Open from CLI
+**Not** visible in terminal where `pnpm open` runs—use WebView console or overlay.
 
 ```bash
-pnpm pet:open 'aipet://text?sid=1&txt=hello'
-pnpm pet:open aipet://waving
+pnpm open 'aipet://text?sid=1&txt=hello'
+pnpm open aipet://waving
 ```
 
-### Windows `cmd` / `start`
-
-`&` separates commands unless the URL is quoted. Wrong:
+### Windows `start` caveat
 
 ```bat
 start aipet://text?tl=a&txt=b&sid=1
 ```
 
-Right:
-
-```bat
-start "" "aipet://text?tl=a&txt=b&sid=1"
-```
-
-Prefer `pnpm pet:open` (passes the URL as one argument). For long bodies, write `~/.ai-pet/messages/<sid>.json` and open `aipet://text?sid=<sid>` only.
-
-Dev: hits Vite `POST /__aipet/protocol?url=…` then HMR event `aipet-protocol`. Production: OS handler + single-instance forward.
-
-### Reply (`sty` + hover 回复)
-
-When both non-empty URL `sid` and valid `sty` are present, the bubble shows a hover **回复** button. Submitting sends user text via `send_tool_reply`:
-
-| `sty` | Delivery |
-| --- | --- |
-| `claude` | `claude --resume <sid> --print …` |
-| `codex` | `codex resume <sid> …` |
-| `cursor` | `cursor agent --resume <sid> --print --trust …` |
-| `qcode` | JSON under `~/.ai-pet/replies/inbox/`; optional `AI_PET_REPLY_QCODE_CMD` in `~/.ai-pet/.env` with `{sid}` and `{inbox}` |
+`&` splits argv; Rust reconstructs via `collect_deep_link_urls`. Prefer `pnpm open` (single argument).
 
 ## SSOT
 
-- [packages/ai-pet/README.md](../../packages/ai-pet/README.md) — full protocol tables
+- [README_CN.md](../../README_CN.md) — full protocol tables
+- `src/pet/protocol.ts` — parsers
