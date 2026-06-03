@@ -1,4 +1,5 @@
-import { DEFAULT_ANIMATION_TICK_MS } from '../config/user-env';
+import { DEFAULT_ANIMATION_TICK_MS } from '../constants/env';
+import { CHROMA_TOLERANCE } from '../constants/sprite';
 
 import { requestTransparentRepaint } from './compositor-refresh';
 import type {
@@ -7,8 +8,6 @@ import type {
   PlayRangeOptions,
   SpritePlayerOptions
 } from './types';
-
-const CHROMA_TOLERANCE = 14;
 
 /** One active player per canvas — stops orphaned rAF loops after HMR reload. */
 const canvasOwner = new WeakMap<HTMLCanvasElement, SpritePlayer>();

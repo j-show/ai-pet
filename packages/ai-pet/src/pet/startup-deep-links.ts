@@ -16,7 +16,11 @@ const parseAipetHost = (url: string): string | null => {
   return null;
 };
 
-/** Prefer the longest URL when plugin and Rust disagree (Windows `cmd` splits on `&`). */
+/**
+ * Prefer the longest URL when plugin and Rust disagree (Windows `cmd` splits on `&`).
+ * @param pluginUrls - URLs from `@tauri-apps/plugin-deep-link`.
+ * @param rustUrls - URLs reconstructed from argv via `collect_deep_link_urls`.
+ */
 const mergeStartupUrls = (
   pluginUrls: string[] | null,
   rustUrls: string[]

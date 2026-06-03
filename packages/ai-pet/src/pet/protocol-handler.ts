@@ -6,6 +6,14 @@ import type { DesktopPet } from './desktop-pet';
 import { parseAipetCommand, parseAipetTextAction } from './protocol';
 import { collectStartupDeepLinks } from './startup-deep-links';
 
+let unlistenOpenUrl: (() => void) | null = null;
+
+/** Stop handling runtime `onOpenUrl` events (e.g. before pet teardown). */
+export const unbindAipetProtocol = () => {
+  unlistenOpenUrl?.();
+  unlistenOpenUrl = null;
+};
+
 /**
  * Dispatch one or more `aipet://` URLs to the desktop pet instance.
  * Handles text show/dismiss, base idle reset, and animation commands.
@@ -55,7 +63,8 @@ export const bindAipetProtocol = async (pet: DesktopPet) => {
     await handleAipetUrls(pet, startUrls);
   }
 
-  await onOpenUrl(urls => {
+  unbindAipetProtocol();
+  unlistenOpenUrl = await onOpenUrl(urls => {
     void handleAipetUrls(pet, urls);
   });
 };

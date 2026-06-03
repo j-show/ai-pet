@@ -21,21 +21,28 @@
     "sync-version": "node scripts/sync-version.mjs",
     "tag-version": "node scripts/tag-version.mjs",
     "preview": "vite preview",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
     "dev": "tauri dev",
     "build:mac": "pnpm build:app",
     "build:win": "pnpm build:app && pnpm build:portable",
     "build:app": "tauri build",
     "build:portable": "tauri build --no-bundle --config src-tauri/tauri.portable.conf.json",
-    "test": "node --import tsx --test test/**/*.test.mjs"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-deep-link": "^2"
+    "@tauri-apps/plugin-deep-link": "^2",
+    "vue": "^3.5.13"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "less": "^4.3.0",
     "pngjs": "^7.0.0",
-    "tsx": "^4.20.6",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^2.2.8"
   }
 }

@@ -3,10 +3,6 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import { saveUserEnv, type UserEnv } from './user-env';
 
-export const ENV_WINDOW_RIGHT = 'AI_PET_WINDOW_RIGHT';
-/** Screen Y of the window outer frame's top edge. */
-export const ENV_WINDOW_TOP = 'AI_PET_WINDOW_TOP';
-
 export interface WindowTopRightAnchor {
   right: number;
   top: number;
@@ -25,8 +21,8 @@ const parseCoord = (raw: string | undefined): number | null => {
 export const parseWindowAnchor = (
   env: UserEnv
 ): WindowTopRightAnchor | null => {
-  const right = parseCoord(env[ENV_WINDOW_RIGHT]);
-  const top = parseCoord(env[ENV_WINDOW_TOP]);
+  const right = parseCoord(env.AI_PET_WINDOW_RIGHT);
+  const top = parseCoord(env.AI_PET_WINDOW_TOP);
   if (right == null || top == null) return null;
 
   return { right, top };
@@ -61,7 +57,7 @@ export const saveWindowTopRightAnchor = async (
   anchor: WindowTopRightAnchor
 ): Promise<void> => {
   await saveUserEnv({
-    [ENV_WINDOW_RIGHT]: String(Math.round(anchor.right)),
-    [ENV_WINDOW_TOP]: String(Math.round(anchor.top))
+    AI_PET_WINDOW_RIGHT: String(Math.round(anchor.right)),
+    AI_PET_WINDOW_TOP: String(Math.round(anchor.top))
   });
 };

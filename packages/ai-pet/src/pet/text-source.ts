@@ -1,20 +1,6 @@
-/**
- * Text protocol source tool identifiers and reply routing metadata.
- * @module pet/text-source
- */
+import { TEXT_SOURCE_SET, type TextSource } from '../constants/text';
 
-/** Source IDE/agent for `aipet://text?sty=` (alias `stp` from ai-pet-helper). */
-export type TextSource = 'claude' | 'codex' | 'cursor' | 'qcode';
-
-/** Allowed `sty` query values. */
-export const TEXT_SOURCE_VALUES: readonly TextSource[] = [
-  'claude',
-  'codex',
-  'cursor',
-  'qcode'
-] as const;
-
-const TEXT_SOURCE_SET = new Set<string>(TEXT_SOURCE_VALUES);
+export type { TextSource };
 
 /** Reply routing: which tool and session to send user input to. */
 export interface TextReplyTarget {

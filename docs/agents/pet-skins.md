@@ -48,7 +48,7 @@ cd packages/pet-skins && node --test test/**/*.test.mjs
 | `displayName`, `description` | Metadata |
 | `spritesheetPath` | Relative path inside package |
 
-Optional atlas/animations: see root README_CN and `codex-defaults.ts`.
+Optional atlas/animations: see root README_CN and `packages/ai-pet/src/constants/pet.ts`.
 
 ## SSOT
 

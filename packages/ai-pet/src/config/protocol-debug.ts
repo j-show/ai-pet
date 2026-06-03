@@ -1,6 +1,10 @@
-import { envProtocolDebug, type UserEnv } from './user-env';
+import {
+  PROTOCOL_DEBUG_TRUTHY_VALUES,
+  PROTOCOL_DEBUG_URL_PARAM,
+  PROTOCOL_LOG_PREFIX
+} from '../constants/protocol-debug';
 
-const LOG_PREFIX = '[ai-pet protocol]';
+import { envProtocolDebug, type UserEnv } from './user-env';
 
 let protocolDebugEnabled = false;
 
@@ -9,27 +13,23 @@ const isTruthyParam = (raw: string | null | undefined): boolean => {
     return false;
   }
   const value = raw.trim().toLowerCase();
-  return (
-    value === 'protocol' ||
-    value === '1' ||
-    value === 'true' ||
-    value === 'yes' ||
-    value === 'on'
-  );
+  return (PROTOCOL_DEBUG_TRUTHY_VALUES as readonly string[]).includes(value);
 };
 
 const reportInitStatus = (source: string, env?: UserEnv) => {
   const raw = env?.AI_PET_DEBUG_PROTOCOL;
   const message = protocolDebugEnabled
-    ? `${LOG_PREFIX} debug ON (${source})`
-    : `${LOG_PREFIX} debug OFF — set AI_PET_DEBUG_PROTOCOL=true in ~/.ai-pet/.env or ?debug=protocol`;
+    ? `${PROTOCOL_LOG_PREFIX} debug ON (${source})`
+    : `${PROTOCOL_LOG_PREFIX} debug OFF — set AI_PET_DEBUG_PROTOCOL=true in ~/.ai-pet/.env or ?${PROTOCOL_DEBUG_URL_PARAM}=protocol`;
 
   console.warn(message);
   if (raw != null) {
-    console.warn(`${LOG_PREFIX} AI_PET_DEBUG_PROTOCOL=${JSON.stringify(raw)}`);
+    console.warn(
+      `${PROTOCOL_LOG_PREFIX} AI_PET_DEBUG_PROTOCOL=${JSON.stringify(raw)}`
+    );
   } else if (env) {
     console.warn(
-      `${LOG_PREFIX} AI_PET_DEBUG_PROTOCOL not found in loaded ~/.ai-pet/.env`
+      `${PROTOCOL_LOG_PREFIX} AI_PET_DEBUG_PROTOCOL not found in loaded ~/.ai-pet/.env`
     );
   }
 };
@@ -41,9 +41,9 @@ export const initProtocolDebug = (options: {
   urlParams?: URLSearchParams;
   env?: UserEnv;
 }) => {
-  if (isTruthyParam(options.urlParams?.get('debug'))) {
+  if (isTruthyParam(options.urlParams?.get(PROTOCOL_DEBUG_URL_PARAM))) {
     protocolDebugEnabled = true;
-    reportInitStatus('URL ?debug=protocol', options.env);
+    reportInitStatus(`URL ?${PROTOCOL_DEBUG_URL_PARAM}=protocol`, options.env);
     return;
   }
 
@@ -93,5 +93,5 @@ export const logProtocolReceived = (
   const summary = getFormatSummary(parsed);
 
   const line = `${new Date().toLocaleTimeString()} ${url} → ${summary}`;
-  console.info(`${LOG_PREFIX} ${line}`);
+  console.info(`${PROTOCOL_LOG_PREFIX} ${line}`);
 };

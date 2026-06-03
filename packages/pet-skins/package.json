@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "AI Pet skins",
   "scripts": {
-    "deploy": "node scripts/deploy.mjs",
-    "test": "node --test test/**/*.test.mjs"
+    "deploy": "node scripts/deploy.mjs"
   }
 }

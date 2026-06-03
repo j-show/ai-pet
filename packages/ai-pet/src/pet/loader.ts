@@ -6,7 +6,8 @@ import {
   DEFAULT_CHROMA_KEY,
   DEFAULT_PET_BASE,
   DEFAULT_PET_ID
-} from './codex-defaults';
+} from '../constants/pet';
+
 import type { LoadedPet, PetAnimation, PetManifest, PetState } from './types';
 
 interface ResolvedUserPet {

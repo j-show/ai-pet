@@ -1,30 +1,15 @@
 import {
-  DEFAULT_TEXT_SID,
-  type AipetTextMessage,
-  type TextIcon
-} from './text-message';
+  AIPET_KEY_TO_STATE,
+  AIPET_SCHEME,
+  TEXT_ICON_SET
+} from '../constants/protocol';
+import { DEFAULT_TEXT_SID } from '../constants/text';
+
+import type { AipetTextMessage, TextIcon } from './text-message';
 import { parseTextSource, type TextReplyTarget } from './text-source';
 import type { PetState } from './types';
 
-export const AIPET_SCHEME = 'aipet:';
-
-const TEXT_ICON_VALUES = new Set<TextIcon>([
-  'warn',
-  'error',
-  'info',
-  'loading'
-]);
-
-/** Protocol key → spritesheet animation state (excluding `base`). */
-const AIPET_KEY_TO_STATE: Record<string, PetState> = {
-  waving: 'waving',
-  jumping: 'jumping',
-  failed: 'failed',
-  waiting: 'waiting',
-  running: 'running',
-  runing: 'running',
-  review: 'review'
-};
+export { AIPET_SCHEME } from '../constants/protocol';
 
 type AipetCommand =
   | { type: 'base' }
@@ -145,7 +130,7 @@ const parseTextIcon = (raw: string | null): TextIcon | null => {
   const icon = raw?.trim().toLowerCase() ?? '';
   if (!icon) return null;
 
-  if (TEXT_ICON_VALUES.has(icon as TextIcon)) return icon as TextIcon;
+  if (TEXT_ICON_SET.has(icon as TextIcon)) return icon as TextIcon;
 
   console.warn(`Unknown aipet text icon: ${icon}`);
   return null;

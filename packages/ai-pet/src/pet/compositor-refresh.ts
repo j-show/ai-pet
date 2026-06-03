@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-const REFRESH_MIN_INTERVAL_MS = 32;
+import { REFRESH_MIN_INTERVAL_MS } from '../constants/compositor';
 
 let windowFocused = document.hasFocus();
 let refreshPending = false;
@@ -13,8 +13,15 @@ export const setFocusRepaintHandler = (handler: (() => void) | null) => {
   onFocusRepaint = handler;
 };
 
+let compositorListenersReady = false;
+
 /** Track window focus and request native compositor refresh while unfocused. */
 export const initCompositorRefresh = async () => {
+  if (compositorListenersReady) {
+    return;
+  }
+  compositorListenersReady = true;
+
   const appWindow = getCurrentWindow();
 
   await appWindow.listen('tauri://blur', () => {

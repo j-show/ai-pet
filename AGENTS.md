@@ -4,7 +4,7 @@ For humans: see [README.md](README.md) and [README_CN.md](README_CN.md).
 
 ## Project
 
-pnpm monorepo: **Tauri 2** desktop pet (`packages/ai-pet`) + **pet-skins** deploy CLI. Frontend is Vite + TypeScript; backend is Rust (`src-tauri`). Custom URL scheme `aipet://` drives animations and stacked text bubbles. User config lives in `~/.ai-pet/.env` (created on first run).
+pnpm monorepo: **Tauri 2** desktop pet (`packages/ai-pet`) + **pet-skins** deploy CLI. Frontend is Vue 3 + Vite + TypeScript; tests use Vitest; backend is Rust (`src-tauri`). Custom URL scheme `aipet://` drives animations and stacked text bubbles. User config lives in `~/.ai-pet/.env` (created on first run).
 
 ## Environment
 
@@ -24,7 +24,7 @@ Run from repository root unless noted:
 | `pnpm fix:eslint` | ESLint with `--fix` |
 | `pnpm fix:prettier` | Prettier write all |
 | `pnpm fix:all` | Prettier then ESLint fix |
-| `pnpm typecheck` | `tsc --noEmit` in `packages/ai-pet` |
+| `pnpm typecheck` | `vue-tsc --noEmit` in `packages/ai-pet` |
 | `pnpm test` | `pet-skins` unit tests (`node --test`) |
 | `pnpm pet:dev` | Tauri dev (`packages/ai-pet`) |
 | `pnpm pet:build` | MSI + portable exe + export to repo `dist/` (Windows-oriented) |

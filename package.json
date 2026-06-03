@@ -32,6 +32,8 @@
     "lint-staged": "latest",
     "prettier": ">=3",
     "typescript": "^5",
-    "typescript-eslint": "^8"
+    "typescript-eslint": "^8",
+    "eslint-plugin-vue": "^10.9.1",
+    "vue-eslint-parser": "^10.4.0"
   }
 }

@@ -1,10 +1,16 @@
+import vue from '@vitejs/plugin-vue';
 import { type IncomingMessage, type ServerResponse } from 'http';
 import { defineConfig, type Plugin } from 'vite';
 
-const host = process.env.TAURI_DEV_HOST;
+import {
+  DEV_HMR_PORT,
+  DEV_PROTOCOL_PATH,
+  DEV_SERVER_PORT,
+  DEV_SERVER_URL
+} from './src/constants/dev-server';
+import { AIPET_SCHEME } from './src/constants/protocol';
 
-const DEV_PROTOCOL_PATH = '/__aipet/protocol';
-const DEV_SERVER = 'http://127.0.0.1:1420';
+const host = process.env.TAURI_DEV_HOST;
 
 const aipetDevProtocolPlugin = (): Plugin => {
   return {
@@ -21,7 +27,7 @@ const aipetDevProtocolPlugin = (): Plugin => {
 
           let protocolUrl = '';
           if (req.method === 'GET') {
-            const requestUrl = new URL(req.url ?? '', DEV_SERVER);
+            const requestUrl = new URL(req.url ?? '', DEV_SERVER_URL);
             protocolUrl = requestUrl.searchParams.get('url') ?? '';
           } else {
             const chunks: Buffer[] = [];
@@ -41,7 +47,7 @@ const aipetDevProtocolPlugin = (): Plugin => {
             }
           }
 
-          if (!protocolUrl?.startsWith('aipet://')) {
+          if (!protocolUrl?.startsWith(AIPET_SCHEME)) {
             res.statusCode = 400;
             res.end('Missing or invalid url query parameter');
             return;
@@ -63,8 +69,8 @@ const aipetDevProtocolPlugin = (): Plugin => {
 };
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [aipetDevProtocolPlugin()],
+export default defineConfig({
+  plugins: [vue(), aipetDevProtocolPlugin()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -72,14 +78,14 @@ export default defineConfig(async () => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 1420,
+    port: DEV_SERVER_PORT,
     strictPort: true,
     host: host || false,
     hmr: host
       ? {
           protocol: 'ws',
           host,
-          port: 1421
+          port: DEV_HMR_PORT
         }
       : void 0,
     watch: {
@@ -87,4 +93,4 @@ export default defineConfig(async () => ({
       ignored: ['**/src-tauri/**']
     }
   }
-}));
+});

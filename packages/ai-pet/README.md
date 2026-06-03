@@ -13,7 +13,7 @@
 
 示例见 [`public/default/`](public/default/)（内置默认宠物 mochibot），或 [`../pet-skins/mochibot/`](../pet-skins/mochibot/)。
 
-可选扩展字段（省略时使用标准 Codex 9 行动画布局，见 `src/pet/codex-defaults.ts`）：
+可选扩展字段（省略时使用标准 Codex 9 行动画布局，见 `src/constants/pet.ts`）：
 
 - `atlas` — `{ columns, cellWidth, cellHeight }`
 - `animations` — 各状态 `{ state, row, frames, fps?, loop? }`
@@ -45,6 +45,12 @@ AI_PET_SCALE=1
 | `AI_PET_ANIMATION_TICK` | 动画帧间隔（毫秒）                    | `250`       |
 | `AI_PET_THEME`          | 界面主题：`auto` \| `light` \| `dark` | `auto`      |
 | `AI_PET_SCALE`          | 宠物显示缩放（`0.5`–`2.0`，文本框不缩放） | `1`       |
+| `AI_PET_WINDOW_RIGHT`   | 窗口右上角锚点 X（屏幕坐标，拖动后保存） | —           |
+| `AI_PET_WINDOW_TOP`     | 窗口上边缘 Y（屏幕坐标）              | —           |
+| `AI_PET_DEBUG_PROTOCOL` | 在 DevTools 打印收到的 `aipet://` URL | 关闭        |
+| `AI_PET_REPLY_QCODE_CMD` | `sty=qcode` 回复时可选 shell 命令（`{sid}`、`{inbox}`） | — |
+
+TypeScript 侧键名与类型见 [`src/config/user-env.ts`](src/config/user-env.ts) 中的 `UserEnv`。
 
 `auto` 跟随系统亮/暗色，影响文字框与右键菜单样式。
 
@@ -169,7 +175,7 @@ pnpm pet:open 'aipet://text?sid=039b1cab-...&sty=cursor&tl=标题&txt=正文'
 ## 测试
 
 ```bash
-pnpm -F ai-pet test          # 协议解析单测（node:test + tsx）
+pnpm -F ai-pet test          # 协议解析单测（Vitest）
 cd packages/ai-pet/src-tauri && cargo test
 ```
 
@@ -209,7 +215,7 @@ ai-pet/
 │   ├── sync-version.mjs  # package.json → Cargo / tauri conf
 │   ├── export-dist.mjs   # 构建产物 → 仓库根 dist/
 │   └── aipet-open.mjs    # 协议调试
-├── test/                 # node:test 协议单测
+├── test/                 # Vitest 协议单测
 ├── src/
 │   ├── config/           # user-env、tool-reply、text-payload
 │   └── pet/              # 加载、动画、协议、文字框

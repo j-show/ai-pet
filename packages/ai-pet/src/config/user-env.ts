@@ -1,28 +1,79 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export type UserEnv = Record<string, string>;
+import {
+  DEFAULT_ANIMATION_TICK_MS,
+  DEFAULT_THEME_SETTING as DEFAULT_THEME_SETTING_VALUE
+} from '../constants/env';
 
 export type PetTheme = 'light' | 'dark';
 export type PetThemeSetting = PetTheme | 'auto';
 
-export const DEFAULT_ANIMATION_TICK_MS = 250;
-export const DEFAULT_THEME_SETTING: PetThemeSetting = 'auto';
+/** Boolean flags in `.env` (`true` / `1` / `yes` / `on`, etc.). */
+export type UserEnvBoolean =
+  | 'true'
+  | 'false'
+  | '1'
+  | '0'
+  | 'yes'
+  | 'no'
+  | 'on'
+  | 'off';
+
+/** `AI_PET_THEME` — resolved by {@link envThemeSetting}. */
+export type UserEnvTheme = PetThemeSetting;
+
+/** Frame interval in ms, e.g. `"250"`. Parsed by {@link envAnimationTickMs}. */
+export type UserEnvAnimationTick = `${number}`;
+
+/** Display scale in `0.5`–`2.0`, e.g. `"1"`. Parsed by {@link envPetScale}. */
+export type UserEnvPetScale = string;
+
+/** Screen coordinate in pixels, e.g. `"1920"`. Parsed by {@link parseWindowAnchor}. */
+export type UserEnvWindowCoord = string;
+
+/**
+ * Known keys in `~/.ai-pet/.env`.
+ * Values are stored as strings; use `env*` helpers for typed runtime values.
+ */
+export interface UserEnv {
+  /** Default pet id (`~/.ai-pet/pets/<id>`). */
+  PET?: string;
+  AI_PET_ANIMATION_TICK?: UserEnvAnimationTick;
+  AI_PET_DEBUG_PROTOCOL?: UserEnvBoolean;
+  AI_PET_THEME?: UserEnvTheme;
+  AI_PET_SCALE?: UserEnvPetScale;
+  /** Top-right anchor X (screen space). */
+  AI_PET_WINDOW_RIGHT?: UserEnvWindowCoord;
+  /** Top edge Y (screen space). */
+  AI_PET_WINDOW_TOP?: UserEnvWindowCoord;
+  /** Optional `qcode` reply shell command (read in Rust). Placeholders: `{sid}`, `{inbox}`. */
+  AI_PET_REPLY_QCODE_CMD?: string;
+}
+
+/** Partial {@link UserEnv} passed to Tauri `save_user_env` (merges into `~/.ai-pet/.env`). */
+export type UserEnvUpdate = Partial<UserEnv>;
+
+export { DEFAULT_ANIMATION_TICK_MS } from '../constants/env';
+
+export const DEFAULT_THEME_SETTING: PetThemeSetting =
+  DEFAULT_THEME_SETTING_VALUE as PetThemeSetting;
 
 const darkSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 let autoThemeListener: ((event: MediaQueryListEvent) => void) | null = null;
 
 /**
  * Load user env from `~/.ai-pet/.env` via Tauri command.
- * @returns Key-value map (e.g. PET, AI_PET_ANIMATION_TICK).
  */
-export const loadUserEnv = async (): Promise<UserEnv> =>
-  invoke('load_user_env');
+export const loadUserEnv = async (): Promise<UserEnv> => {
+  const raw = await invoke<Record<string, string>>('load_user_env');
+  return raw as UserEnv;
+};
 
 /** Merge keys into `~/.ai-pet/.env` (replaces existing keys). */
-export const saveUserEnv = async (
-  values: Record<string, string>
-): Promise<void> => {
-  return invoke('save_user_env', { values });
+export const saveUserEnv = async (values: UserEnvUpdate): Promise<void> => {
+  return invoke('save_user_env', {
+    values: values as Record<string, string>
+  });
 };
 
 /** Read `PET` from user env; empty values are ignored. */

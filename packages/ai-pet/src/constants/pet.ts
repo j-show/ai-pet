@@ -1,4 +1,12 @@
-import type { PetAnimation, PetAtlas } from './types';
+import type { PetAnimation, PetAtlas } from '../pet/types';
+
+/** Default pet package id under `~/.ai-pet/pets/` or bundled `public/default/`. */
+export const DEFAULT_PET_ID = 'mochibot';
+
+/** Bundled fallback pet served from `public/default/`. */
+export const DEFAULT_PET_BASE = '/default';
+
+export const DEFAULT_CHROMA_KEY = '#FF00FF';
 
 /** Standard Codex digital pet atlas layout (mochibot / pet_request.json). */
 export const CODEX_DEFAULT_ATLAS: PetAtlas = {
@@ -19,10 +27,3 @@ export const CODEX_DEFAULT_ANIMATIONS: PetAnimation[] = [
   { state: 'running', row: 7, frames: 6, loop: true },
   { state: 'review', row: 8, frames: 6, loop: true }
 ];
-
-export const DEFAULT_PET_ID = 'mochibot';
-
-/** Bundled fallback pet served from `public/default/`. */
-export const DEFAULT_PET_BASE = '/default';
-
-export const DEFAULT_CHROMA_KEY = '#FF00FF';

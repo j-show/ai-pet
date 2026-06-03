@@ -4,42 +4,39 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 
 import { clampPetScale, envPetScale, savePetScale } from '../config/pet-scale';
 import { loadTextPayload } from '../config/text-payload';
-import { type UserEnv, DEFAULT_ANIMATION_TICK_MS } from '../config/user-env';
+import { type UserEnv } from '../config/user-env';
 import {
   applyWindowTopRightAnchor,
   parseWindowAnchor,
   readWindowTopRightAnchor,
   saveWindowTopRightAnchor
 } from '../config/window-position';
+import { DEFAULT_ANIMATION_TICK_MS } from '../constants/env';
+import { DEFAULT_PET_ID } from '../constants/pet';
+import {
+  DIRECTION_FLIP_PX,
+  DRAG_END_FROM,
+  DRAG_END_TO,
+  DRAG_LOOP_FROM,
+  DRAG_LOOP_TO,
+  DRAG_START_FROM,
+  DRAG_START_TO,
+  DRAG_THRESHOLD_PX,
+  HOVER_JUMP_CYCLES,
+  IDLE_BEHAVIOR_MAX_MS,
+  IDLE_BEHAVIOR_MIN_MS,
+  IDLE_BEHAVIOR_STATES,
+  TAP_MAX_MS
+} from '../constants/pet-interaction';
 
-import { DEFAULT_PET_ID } from './codex-defaults';
 import { loadPet } from './loader';
 import { SpritePlayer } from './sprite-player';
 import {
-  TextBubbleStack,
   bubbleAnchorForPet,
-  type AipetTextMessage
+  type AipetTextMessage,
+  type TextBubblesController
 } from './text-bubble';
 import type { LoadedPet, PetState } from './types';
-
-const DRAG_THRESHOLD_PX = 6;
-/** Opposite movement required before flipping run direction during drag loop. */
-const DIRECTION_FLIP_PX = 10;
-const TAP_MAX_MS = 350;
-const IDLE_BEHAVIOR_MIN_MS = 25_000;
-const IDLE_BEHAVIOR_MAX_MS = 55_000;
-const IDLE_BEHAVIOR_STATES: PetState[] = ['jumping'];
-const HOVER_JUMP_CYCLES = 3;
-
-/** 1-based frames 1-2 → 0-based 0-1 */
-const DRAG_START_FROM = 0;
-const DRAG_START_TO = 1;
-/** 1-based frames 3-6 → 0-based 2-5 */
-const DRAG_LOOP_FROM = 2;
-const DRAG_LOOP_TO = 5;
-/** 1-based frames 7-8 → 0-based 6-7 */
-const DRAG_END_FROM = 6;
-const DRAG_END_TO = 7;
 
 type DragPhase = 'none' | 'start' | 'loop' | 'end';
 
@@ -74,8 +71,8 @@ export class DesktopPet {
   private readonly scaleHandle: HTMLButtonElement;
   private readonly stageEl: HTMLElement;
   private readonly contextMenu: HTMLElement;
-  private readonly titleEl: HTMLElement;
-  private readonly textBubbles: TextBubbleStack;
+  private readonly setDisplayName: (name: string) => void;
+  private readonly textBubbles: TextBubblesController;
 
   private petScale = 1;
   private scaleSession: ScaleSession | null = null;
@@ -88,6 +85,8 @@ export class DesktopPet {
   private idleTimer = 0;
   /** Temporary base replacement set by `?default=true`; cleared by `aipet://base`. */
   private protocolDefault: PetState | null = null;
+  private interactionAbort: AbortController | null = null;
+  private unlistenWindowMoved: (() => void) | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -95,18 +94,16 @@ export class DesktopPet {
     scaleHandle: HTMLButtonElement,
     stageEl: HTMLElement,
     contextMenu: HTMLElement,
-    titleEl: HTMLElement,
-    textBubblesRoot: HTMLElement
+    setDisplayName: (name: string) => void,
+    textBubbles: TextBubblesController
   ) {
     this.canvas = canvas;
     this.canvasWrap = canvasWrap;
     this.scaleHandle = scaleHandle;
     this.stageEl = stageEl;
     this.contextMenu = contextMenu;
-    this.titleEl = titleEl;
-    this.textBubbles = new TextBubbleStack(textBubblesRoot, () => {
-      void this.resizeWindow();
-    });
+    this.setDisplayName = setDisplayName;
+    this.textBubbles = textBubbles;
   }
 
   private petDisplayWidth(): number {
@@ -125,6 +122,11 @@ export class DesktopPet {
     return rect.height > 0
       ? Math.round(rect.height)
       : Math.round(this.pet.atlas.cellHeight * this.petScale);
+  }
+
+  /** Called when bubble stack changes size (show / dismiss). */
+  public resizeWindowForBubbles() {
+    void this.resizeWindow();
   }
 
   private async resizeWindow() {
@@ -223,11 +225,22 @@ export class DesktopPet {
     }
   }
 
+  /** Remove canvas/scale/window-move listeners (HMR or `destroy`). */
+  private teardownInteraction() {
+    this.interactionAbort?.abort();
+    this.interactionAbort = null;
+    this.unlistenWindowMoved?.();
+    this.unlistenWindowMoved = null;
+  }
+
   private async bindMoveListener() {
+    this.unlistenWindowMoved?.();
     const appWindow = getCurrentWindow();
-    await appWindow.onMoved(({ payload: position }) => {
-      this.onWindowMoved(position.x);
-    });
+    this.unlistenWindowMoved = await appWindow.onMoved(
+      ({ payload: position }) => {
+        this.onWindowMoved(position.x);
+      }
+    );
   }
 
   private directionForDelta(dx: number): PetState {
@@ -691,81 +704,113 @@ export class DesktopPet {
       }
     };
 
-    this.scaleHandle.addEventListener('pointerdown', onScalePointerDown);
-    this.scaleHandle.addEventListener('pointermove', onScalePointerMove);
-    this.scaleHandle.addEventListener('pointerup', event => {
-      void finishScaleDrag(event);
+    const { signal } = this.interactionAbort!;
+    this.scaleHandle.addEventListener('pointerdown', onScalePointerDown, {
+      signal
     });
-    this.scaleHandle.addEventListener('pointercancel', event => {
-      void finishScaleDrag(event);
+    this.scaleHandle.addEventListener('pointermove', onScalePointerMove, {
+      signal
     });
+    this.scaleHandle.addEventListener(
+      'pointerup',
+      event => {
+        void finishScaleDrag(event);
+      },
+      { signal }
+    );
+    this.scaleHandle.addEventListener(
+      'pointercancel',
+      event => {
+        void finishScaleDrag(event);
+      },
+      { signal }
+    );
   }
 
   private bindEvents() {
-    this.canvas.addEventListener('contextmenu', event => {
-      event.preventDefault();
-      this.showContextMenu(event.clientX, event.clientY);
+    this.teardownInteraction();
+    this.interactionAbort = new AbortController();
+    const { signal } = this.interactionAbort;
+
+    this.canvas.addEventListener(
+      'contextmenu',
+      event => {
+        event.preventDefault();
+        this.showContextMenu(event.clientX, event.clientY);
+      },
+      { signal }
+    );
+
+    this.canvasWrap.addEventListener(
+      'pointerenter',
+      () => {
+        // Idle doesn't count as "normal playback"; when user hovers, give a short
+        // jumping greeting if nothing else is running.
+        if (this.busy) return;
+        if (this.currentState !== 'idle') return;
+        if (this.activePointerId !== null) return;
+        if (this.dragSession || this.scaleSession) return;
+
+        this.clearIdleTimer();
+        this.playProtocolCounted('jumping', HOVER_JUMP_CYCLES);
+      },
+      { signal }
+    );
+
+    this.canvas.addEventListener(
+      'pointerdown',
+      event => {
+        if (event.button !== 0) {
+          return;
+        }
+
+        if (event.detail >= 2) {
+          return;
+        }
+
+        this.hideContextMenu();
+        this.activePointerId = event.pointerId;
+        try {
+          this.canvas.setPointerCapture(event.pointerId);
+        } catch {
+          // Capture may fail on unsupported platforms; window mouseup is fallback.
+        }
+
+        this.pointerDown = {
+          x: event.screenX,
+          y: event.screenY,
+          time: Date.now()
+        };
+        this.dragSession = {
+          startWindowX: null,
+          lastWindowX: null,
+          moved: false,
+          phase: 'none',
+          direction: null,
+          oppositeDragPx: 0
+        };
+
+        void getCurrentWindow()
+          .outerPosition()
+          .then(({ x }) => {
+            if (!this.dragSession) {
+              return;
+            }
+
+            this.dragSession.startWindowX = x;
+            this.dragSession.lastWindowX = x;
+          });
+
+        void getCurrentWindow().startDragging();
+      },
+      { signal }
+    );
+
+    this.canvas.addEventListener('pointerup', this.onPointerUp, { signal });
+    window.addEventListener('mouseup', this.onWindowMouseUp, {
+      capture: true,
+      signal
     });
-
-    this.canvasWrap.addEventListener('pointerenter', () => {
-      // Idle doesn't count as "normal playback"; when user hovers, give a short
-      // jumping greeting if nothing else is running.
-      if (this.busy) return;
-      if (this.currentState !== 'idle') return;
-      if (this.activePointerId !== null) return;
-      if (this.dragSession || this.scaleSession) return;
-
-      this.clearIdleTimer();
-      this.playProtocolCounted('jumping', HOVER_JUMP_CYCLES);
-    });
-
-    this.canvas.addEventListener('pointerdown', event => {
-      if (event.button !== 0) {
-        return;
-      }
-
-      if (event.detail >= 2) {
-        return;
-      }
-
-      this.hideContextMenu();
-      this.activePointerId = event.pointerId;
-      try {
-        this.canvas.setPointerCapture(event.pointerId);
-      } catch {
-        // Capture may fail on unsupported platforms; window mouseup is fallback.
-      }
-
-      this.pointerDown = {
-        x: event.screenX,
-        y: event.screenY,
-        time: Date.now()
-      };
-      this.dragSession = {
-        startWindowX: null,
-        lastWindowX: null,
-        moved: false,
-        phase: 'none',
-        direction: null,
-        oppositeDragPx: 0
-      };
-
-      void getCurrentWindow()
-        .outerPosition()
-        .then(({ x }) => {
-          if (!this.dragSession) {
-            return;
-          }
-
-          this.dragSession.startWindowX = x;
-          this.dragSession.lastWindowX = x;
-        });
-
-      void getCurrentWindow().startDragging();
-    });
-
-    this.canvas.addEventListener('pointerup', this.onPointerUp);
-    window.addEventListener('mouseup', this.onWindowMouseUp, true);
 
     // document.addEventListener('click', event => {
     //   if (
@@ -775,12 +820,6 @@ export class DesktopPet {
     //     this.hideContextMenu();
     //   }
     // });
-
-    this.contextMenu
-      .querySelector("[data-action='quit']")
-      ?.addEventListener('click', () => {
-        void getCurrentWindow().close();
-      });
   }
 
   /** Play a full animation cycle `cyclesLeft` times, then return to base/default. */
@@ -985,8 +1024,7 @@ export class DesktopPet {
     const { pet, spritesheet } = await loadPet(petId);
     this.pet = pet;
     this.petScale = envPetScale(userEnv);
-    this.titleEl.textContent = pet.manifest.displayName;
-    document.title = pet.manifest.displayName;
+    this.setDisplayName(pet.manifest.displayName);
 
     this.player?.dispose();
     this.player = new SpritePlayer({
@@ -1012,6 +1050,7 @@ export class DesktopPet {
 
   /** Release animation loop and idle timers (HMR / re-init). */
   public destroy() {
+    this.teardownInteraction();
     this.clearIdleTimer();
     this.stopDragReleasePoll();
     this.cancelScaleDragRaf();
